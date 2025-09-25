@@ -7,3 +7,7 @@ class QuoteTool(SQLModel, table=True):
     text: str
     caption: str
     alignment: str 
+
+    tool_md_id: uuid.UUID = Field(foreign_key="tool_md.id")
+
+    __tablename__ = "quote_tool"

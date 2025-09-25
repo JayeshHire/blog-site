@@ -6,3 +6,6 @@ class ParagraphTool(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     text: str
 
+    tool_md_id: uuid.UUID = Field(foreign_key="tool_md.id")
+
+    __tablename__ = "paragraph_tool"

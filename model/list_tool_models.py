@@ -9,12 +9,14 @@ class ListToolTbl(SQLModel, table=True):
     style: str
     meta: Dict[str, Any] = Field(sa_column=Column(JSON))
 
+    tool_md_id: uuid.UUID = Field(foreign_key="tool_md.id")
+
     __tablename__ = "list_tool_tbl"
 
 
 class ItemList(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    lttbl_id: uuid.UUID | None = Field(default=None, foreign_key="list_tool_tbl.id") # list_tool_table
+    lttbl_id: uuid.UUID = Field(foreign_key="list_tool_tbl.id") # list_tool_table
 
     __tablename__ = "item_list"
 

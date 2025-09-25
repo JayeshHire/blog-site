@@ -7,4 +7,6 @@ class CodeTool(SQLModel, table=True):
     code: str
     language_code: str
 
-    tool_id: uuid.UUID = Field()
+    tool_md_id: uuid.UUID = Field(foreign_key="tool_md.id")
+
+    __tablename__ = "code_tool"

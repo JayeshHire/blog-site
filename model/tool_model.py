@@ -42,3 +42,5 @@ class ToolMD(SQLModel, table=True): # Tool Meta Data
 
     tool_id: uuid.UUID | None = Field(default=None, foreign_key="tool.id")
     tool: Tool | None = Relationship(back_populates="tool_mds")
+
+    __tablename__ = "tool_md"
