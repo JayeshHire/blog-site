@@ -7,9 +7,9 @@ from quote_tool_model import *
 from table_tool_model import *
 from tool_model import *
 
-sqlite_url = "sqlite:///testing.db"
+# sqlite_url = "sqlite:///testing.db"
 
-engine = create_engine(sqlite_url, echo=True)
+# engine = create_engine(sqlite_url, echo=True)
 
-SQLModel.metadata.create_all(engine)
+# SQLModel.metadata.create_all(engine)
 

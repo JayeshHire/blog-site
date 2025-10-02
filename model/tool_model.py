@@ -15,7 +15,7 @@ class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory= uuid.uuid4, primary_key=True)
     username: str = Field(unique=True)
     email: str = Field(unique= True)
-    last_login: datetime | None
+    last_login: datetime | None = Field(default_factory=datetime.now)
 
     articles: list["Article"] | None = Relationship(back_populates="author")
 
@@ -25,7 +25,7 @@ class Article(SQLModel, table=True):
     title: str
     subtitle: str
     pub_datetime: datetime = Field(default_factory= datetime.now)
-
+    # path_url: str | None = Field(default=None)
     author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
     author: User | None = Relationship(back_populates="articles")
 
@@ -35,12 +35,12 @@ class Article(SQLModel, table=True):
 class ToolMD(SQLModel, table=True): # Tool Meta Data
     id: uuid.UUID | None = Field(default_factory= uuid.uuid4, primary_key=True)
     sequence: int 
-    block_id: uuid.UUID
+    block_id: str 
 
     article_id: uuid.UUID | None = Field(default=None, foreign_key="article.id")
     article: Article | None = Relationship(back_populates="tool_mds")
 
-    tool_id: uuid.UUID | None = Field(default=None, foreign_key="tool.id")
+    tool_id: int = Field(default=None, foreign_key="tool.id")
     tool: Tool | None = Relationship(back_populates="tool_mds")
 
     __tablename__ = "tool_md"
