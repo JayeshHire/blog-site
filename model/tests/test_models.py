@@ -386,54 +386,8 @@ def create_tool_in_db(request, init_db_session):
     
     return (create__tool_tbl__inst(), tool_type)
 
-
-# @pytest.fixture(name="tool_tbl")
-# def create_tool_tbl_ins( request, init_db_session: Session, tool_md: tool_model.ToolMD):
-#     tool_type = request.param
-#     tool_md = get_tool_md()
-
-
 @pytest.mark.parametrize("created_tool", ["table", "code", "paragraph", "header", "quote", "List"], indirect=True)
 def test__table_tool__(request, init_db_session: Session, created_tool):
-    # data = {
-    #     "type" : "table",
-    #     "id": str(uuid.uuid4()),
-    #     "sequence": 1,
-    #     "data" : {
-    #         "content" : [ ["Kine", "1 pcs", "100$"], ["Pigs", "3 pcs", "200$"], ["Chickens", "12 pcs", "150$"] ]
-    #     }
-    # }
-    
-    # get the tool id from the tool table
-    # tool_id = init_db_session.exec(
-    #     select(tool_model.Tool)
-    #     .where(tool_model.Tool.name == data.get("type", None))
-    # ).first().id
-
-    # get any article id for the block
-    # article_id = init_db_session.exec(
-    #     select(tool_model.Article).limit(1)
-    # ).first().id
-
-    # store the meta data inside the tool_md tbl
-    # tool_md = tool_model.ToolMD(
-    #     sequence= data.get("sequence", None),
-    #     block_id = data.get("id", None),
-    #     article_id=article_id,
-    #     tool_id= tool_id
-    # )
-
-    # init_db_session.add(tool_md)
-    # init_db_session.commit()
-
-    # store the table data inside the table_tool tbl
-    # tbl_tool = table_tool_model.TableTool(
-    #     content=data["data"]["content"],
-    #     tool_md_id=tool_md.id
-    # )
-    # init_db_session.add(tbl_tool)
-    # init_db_session.commit()
-    # table_type = request.param
     tool, tool_type = created_tool
     if tool_type == "table":
         isinstance(created_tool, table_tool_model.TableTool)
