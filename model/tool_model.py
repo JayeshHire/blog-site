@@ -5,7 +5,7 @@ from datetime import datetime
 
 class Tool(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    name: str 
+    name: str = Field(unique= True)
     class_name: str 
 
     tool_mds: list["ToolMD"] | None = Relationship(back_populates="tool")

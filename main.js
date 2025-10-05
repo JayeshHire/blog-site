@@ -27,7 +27,13 @@ const saveBtn = document.getElementById("save-btn") ;
 saveBtn.addEventListener("click", async () => {
     editor.save().then((outputData) => {
         console.log("output data:")
+
+        // below values should be replaced according to the user session data
+        outputData.logged_in_session_id = "abcdf" ;
+        outputData.browser_session_id = "dbshfg" ;
+
         console.log(outputData);
+        console.log("hello") ;
         post_data(outputData, "http://127.0.0.1:8000/editorjs");
     }).catch((err) => {
         console.log(err);
