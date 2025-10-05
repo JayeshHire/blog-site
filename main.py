@@ -1,13 +1,23 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, Depends
+from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 import json
-from pydantic import BaseModel
+from pydantic import BaseModel, Json, field_validator
 from typing import Any, Optional, List, Annotated
+from database import get_session, init_db_setup
+from sqlmodel import Session, select
+from editorjs_basemodel import *
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan( app: FastAPI):
+    init_db_setup()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="dist"), name="static")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
@@ -16,62 +26,9 @@ async def get_index():
     return content
 
 
-import datetime
-from zoneinfo import ZoneInfo
-
-def convert_to_IST(unix_timestamp: int) -> datetime.datetime:
-    unix_timestamp = unix_timestamp / 1000 # convert from ms to sec
-    utc = datetime.datetime.fromtimestamp(unix_timestamp, tz=datetime.timezone.utc)
-    ist = utc.astimezone(ZoneInfo("Asia/Kolkata"))
-    return ist 
-
-
-class TableData(BaseModel):
-    content: List[List[str]]
-
-class CodeToolData(BaseModel):
-    code: str
-    languageCode: str
-
-class ParagraphData(BaseModel):
-    text: str
-
-class HeaderData(BaseModel):
-    text: str
-    level: int
-
-class QuoteData(BaseModel):
-    text: str
-    caption: str
-    alignment: str
-
-class ListItem(BaseModel):
-    content: str
-    meta: str | None
-    items: Optional[List["ListItem"]] = None
-
-class ListData(BaseModel):
-    style: str
-    meta: str | None
-    items: Optional[List["ListItem"]] = None
-
-class Block(BaseModel):
-    id: str
-    type: str
-    data: TableData | CodeToolData | ParagraphData | HeaderData | QuoteData | ListData
-
-class EditorJSSessionData(BaseModel):
-    time: int
-    blocks: List[Block]
-    version: str
-    logged_in_session_id: str
-    browser_session_id: str
-
 
 @app.post("/editorjs")
-async def create_data(item: Annotated[EditorJSSessionData, Body()]):
-    # data = json.loads(item))
-    # print(json.dumps(item, indent=3))
-    print(type(item))
-    return item
-
+async def create_data(editorjsdata: Annotated[ bool, Depends(save_editorjs_data)]):
+    if editorjsdata:
+        return "SUCCESS"
+    return "FAILURE"

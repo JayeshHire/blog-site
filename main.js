@@ -32,7 +32,7 @@ saveBtn.addEventListener("click", async () => {
         outputData.logged_in_session_id = "abcdf" ;
         outputData.browser_session_id = "dbshfg" ;
 
-        console.log(outputData);
+        console.log(JSON.stringify(outputData));
         console.log("hello") ;
         post_data(outputData, "http://127.0.0.1:8000/editorjs");
     }).catch((err) => {

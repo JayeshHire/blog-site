@@ -35,7 +35,7 @@ class Article(SQLModel, table=True):
 class ToolMD(SQLModel, table=True): # Tool Meta Data
     id: uuid.UUID | None = Field(default_factory= uuid.uuid4, primary_key=True)
     sequence: int 
-    block_id: uuid.UUID
+    block_id: uuid.UUID 
 
     article_id: uuid.UUID | None = Field(default=None, foreign_key="article.id")
     article: Article | None = Relationship(back_populates="tool_mds")
