@@ -1,0 +1,153 @@
+{
+    "users": [
+        {
+            "username": "john",
+            "email": "john@gmail.com"
+        },
+        {
+            "username": "joe",
+            "email":"joe@gmail.com"
+        },
+        {
+            "username": "james",
+            "email": "james@gmail.com"
+        }
+    ],
+    "articles": [
+        {
+            "title": "My daily diary",
+            "subtitle": "This article contains my daily life journey"
+        },
+        {
+            "title": "My coding journey",
+            "subtitle": "This article contains how I became proficient in coding"
+        }
+    ],
+    "tools": [
+        { "name": "table", "class_name": "Table"},
+        { "name": "code", "class_name": "CodeTool"},
+        { "name": "paragraph", "class_name": "Paragraph"},
+        { "name": "header", "class_name": "Header"},
+        { "name": "quote", "class_name": "Quote"},
+        { "name": "list", "class_name": "EditorjsList"}
+    ],
+    "tests": {
+        "insertion-test-data": {
+            "table-data": {
+                "type" : "table",
+                "id": "4dc51dc5-4948-4718-9210-1cb32188d98a",
+                "sequence": 1,
+                "data" : {
+                    "content" : [ ["Kine", "1 pcs", "100$"], ["Pigs", "3 pcs", "200$"], ["Chickens", "12 pcs", "150$"] ]
+                }
+            },
+            "code-data": {
+                "type" : "code",
+                "id": "3bb9953d-524a-44f1-bb5e-ce4314daea88",
+                "sequence": 1,
+                "data" : {
+                    "code": "body {\n font-size: 14px;\n line-height: 16px;\n}",
+                    "languageCode": "css"
+                }
+            },
+            "paragraph-data": {
+            	"type": "paragraph",
+                "id": "78964982-513e-4485-a7f9-d4afa7c460ad",
+                "sequence": 1,
+            	"data": {
+            		"text": "This is my paragraph. It has some knowledgeable info"
+            	}
+            },
+            "header-data": {
+            	"type": "header",
+                "id": "69e8f801-e60e-4e39-93eb-46c092d2c4f2",
+                "sequence": 1,
+            	"data": {
+            		"text": "I am beginner level programmer",
+            		"level": 2
+            	}
+            },
+            "quote-data": {
+                "type" : "quote",
+                "id": "ac21c697-5a34-4ac3-bf7a-74b5b149e579",
+                "sequence": 1,
+                "data" : {
+                    "text" : "The unexamined life is not worth living.",
+                    "caption" : "Socrates",
+                    "alignment" : "left"
+                }
+            },
+            "unordered-list-data": {
+            	"type": "list",
+                "id": "70f45c3f-30aa-4310-8c66-87fb54646710",
+                "sequence": 1,
+            	"data": {
+            		"style": "unordered",
+            			"items": [
+            				{
+            					"content": "Apple",
+            					"meta": {},
+            					"items": [
+            						{
+            							"content": "red",
+            							"meta": {},
+            							"items": {}
+            						}
+            					]
+            				}
+            			]
+            	}
+            },
+           "ordered-list-data": {
+            	"type": "list",
+                "id": "822184fb-9bad-4053-846a-48dcb478ff93",
+                "sequence": 1,
+            	"data": {
+            		"style": "ordered",
+            		"meta": {
+            			"start": 2,
+            			"counterType": "upper-roman"
+            		},
+            		"items": [
+            			{
+            				"content": "Apple",
+            				"meta": {},
+            				"items": [
+            					{
+            						"content": "Red",
+            						"meta": {},
+            						"items": []
+            					}
+            				]
+            			}
+            		]
+            	}
+            },
+            "checklist-data": {
+              "type" : "list",
+              "id": "e01198c4-f677-456c-bbaf-93d5d679a851",
+              "sequence": 1,
+              "data" : {
+                "style": "checklist",
+                "items" : [
+                  {
+                    "content": "Apples",
+                    "meta": {
+                      "checked": false
+                    },
+                    "items": [
+                      {
+                        "content": "Red",
+                        "meta": {
+                          "checked": true
+                        },
+                        "items": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+        }
+    }
+}
