@@ -314,6 +314,9 @@ def update_list_tool_data(session: Session,
         ).one()
         session.delete(tool_inst)
 
+        session, tool_md = update_ToolMD_tool_id(session=session,
+                                                 tool_md= tool_md,
+                                                 tool_name= tool_name)
         session, lt_tbl = add_list_tool_data(session=session,
                            block=block,
                            tool_md_id=tool_md.id
@@ -348,6 +351,9 @@ def update_paragraph_tool_data(session: Session,
         ).one()
         session.delete(tool_inst)
 
+        session, tool_md = update_ToolMD_tool_id(session=session,
+                                                 tool_md= tool_md,
+                                                 tool_name= tool_name)
         session, p_tbl = add_paragraph_tool_data(session, block, tool_md.id)
     return (session, p_tbl)
 
@@ -380,7 +386,10 @@ def update_quote_tool_data(session: Session,
             .where(tool_cls.tool_md_id == tool_md.id)
         ).one()
         session.delete(tool_inst)
-    
+
+        session, tool_md = update_ToolMD_tool_id(session=session,
+                                                 tool_md= tool_md,
+                                                 tool_name= tool_name)
         session, quote_tbl = add_quote_tool_data(
             session,
             block,
@@ -416,6 +425,9 @@ def update_table_tool_data(session: Session,
         ).one()
         session.delete(tool_inst)
 
+        session, tool_md = update_ToolMD_tool_id(session=session,
+                                                 tool_md= tool_md,
+                                                 tool_name= tool_name)
         session, tt_tbl = add_table_tool_data(
             session,
             block,
@@ -457,3 +469,4 @@ def store_editorjs_data(editorjs_data: EditorJSSessionData):
         - update the data inside the instance with the new data.
         - commit the changes in the transaction.
     '''
+    pass 
