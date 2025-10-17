@@ -8,6 +8,14 @@ from collections import namedtuple
 
 # AddToolOutput = namedtuple("AddToolOutputType", [""])
 
+# def add_tool_md(session: Session,
+#                 block: Block,
+#                 article_id ) -> Tuple[
+#                     Session, tool_model.ToolMD
+#                 ]:
+#     tool_md = tool_model.ToolMD(
+
+#     )
 
 # create individual functions for adding record to the db
 def add_code_tool_data(session: Session, 
@@ -15,7 +23,7 @@ def add_code_tool_data(session: Session,
                        tool_md_id: uuid.UUID
                        ) -> Tuple[
                            Session,
-                           code_tool_model.CodeTool
+                           tool_model.ToolDataModel
                            ]:
     if type(block.data) != CodeToolData:
         raise ValueError(f"object of CodeToolData class was expected but instead got {type(block.data)}")
@@ -26,6 +34,7 @@ def add_code_tool_data(session: Session,
         tool_md_id= tool_md_id
     )
     session.add(ct_tbl)
+    session.commit()
     return (session, ct_tbl)
 
 
@@ -34,7 +43,7 @@ def add_header_tool_data(session: Session,
                        tool_md_id: uuid.UUID
                        ) -> Tuple[
                            Session,
-                           header_tool_model.HeaderTool
+                           tool_model.ToolDataModel
                            ]:
     if type(block.data) != HeaderData:
         raise ValueError(f"object of HeaderData class was expected but instead got {type(block.data)}")
@@ -45,6 +54,7 @@ def add_header_tool_data(session: Session,
         tool_md_id=tool_md_id
     )
     session.add(ht_tbl)
+    session.commit()
     return (session, ht_tbl)
 
 
@@ -53,7 +63,7 @@ def add_list_tool_data(session: Session,
                        tool_md_id: uuid.UUID
                        ) -> Tuple[
                            Session,
-                           list_tool_models.ListToolTbl
+                           tool_model.ToolDataModel
                            ]:
     if type(block.data) != ListData:
         raise ValueError(f"object of ListData class was expected but instead got {type(block.data)}")
@@ -86,6 +96,7 @@ def add_list_tool_data(session: Session,
     store_items(session, block.data.items,
                 lt_tbl.id,
                 None)
+    session.commit()
     return (session, lt_tbl)
 
 
@@ -94,7 +105,7 @@ def add_paragraph_tool_data(session: Session,
                        tool_md_id: uuid.UUID
                        ) -> Tuple[
                            Session,
-                           paragraph_tool_model.ParagraphTool
+                           tool_model.ToolDataModel
                            ]:
     if type(block.data) != ParagraphData:
         raise ValueError(f"object of ParagraphData class was expected but instead got {type(block.data)}")
@@ -105,6 +116,7 @@ def add_paragraph_tool_data(session: Session,
     )
 
     session.add(p_tbl)
+    session.commit()
     return (session, p_tbl)
 
 
@@ -113,7 +125,7 @@ def add_quote_tool_data(session: Session,
                        tool_md_id: uuid.UUID
                        ) -> Tuple[
                            Session,
-                           quote_tool_model.QuoteTool
+                           tool_model.ToolDataModel
                            ]:
     if type(block.data) != QuoteData:
         raise ValueError(f"object of QuoteData class was expected but instead got {type(block.data)}")
@@ -125,6 +137,7 @@ def add_quote_tool_data(session: Session,
         tool_md_id= tool_md_id
     )
     session.add(q_tbl)
+    session.commit()
     return (session, q_tbl)
 
 
@@ -133,7 +146,7 @@ def add_table_tool_data(session: Session,
                        tool_md_id: uuid.UUID
                        ) -> Tuple[
                            Session,
-                           table_tool_model.TableTool
+                           tool_model.ToolDataModel
                            ]:
     if type(block.data) != TableData:
         raise ValueError(f"object of TableData class was expected but instead got {type(block.data)}")
@@ -143,6 +156,7 @@ def add_table_tool_data(session: Session,
         tool_md_id= tool_md_id
     )
     session.add(tt_tbl)
+    session.commit()
     return (session, tt_tbl)
 
 
@@ -179,7 +193,7 @@ def update_code_tool_data(session: Session,
                        tool_md: tool_model.ToolMD
                        ) -> Tuple[
                            Session,
-                           code_tool_model.CodeTool
+                           tool_model.ToolDataModel
                            ]:
     if type(block.data) != CodeToolData:
         raise ValueError(f"object of CodeToolData class was expected but instead got {type(block.data)}")
@@ -193,6 +207,7 @@ def update_code_tool_data(session: Session,
         ct_tbl.code = block.data.code
         ct_tbl.language_code = block.data.languageCode
         session.add(ct_tbl)
+        session.commit()
 
     else:
         tool_cls = tool_name_cls_map[tool_name]
@@ -224,7 +239,7 @@ def update_header_tool_data(session: Session,
                        tool_md: tool_model.ToolMD
                        ) -> Tuple[
                            Session,
-                           header_tool_model.HeaderTool
+                           tool_model.ToolDataModel
                            ]:
     if type(block.data) != HeaderData:
         raise ValueError(f"object of HeaderData class was expected but instead got {type(block.data)}")
@@ -238,6 +253,7 @@ def update_header_tool_data(session: Session,
         header_tool_inst.text = block.data.text
         header_tool_inst.level = block.data.level
         session.add(header_tool_inst)
+        session.commit()
     
     else:
         tool_cls = tool_name_cls_map[tool_name]
@@ -272,7 +288,7 @@ def update_list_tool_data(session: Session,
                           tool_md: tool_model.ToolMD
                           ) -> Tuple[
                             Session,
-                          list_tool_models.ListToolTbl
+                          tool_model.ToolDataModel
                           ]:
     if type(block.data) != ListData:
         raise ValueError(f"object of ListData class was expected but instead got {type(block.data)}")
@@ -302,10 +318,12 @@ def update_list_tool_data(session: Session,
         ).one()
         lt_tbl.style = block.data.style
         lt_tbl.meta = block.data.meta
+        session.add(lt_tbl)
         store_items(session, block.data.items,
                 lt_tbl.id,
                 None)
-    
+        session.commit()
+        
     else: 
         tool_cls = tool_name_cls_map[tool_name]
         tool_inst = session.exec(
@@ -329,7 +347,7 @@ def update_paragraph_tool_data(session: Session,
                           tool_md: tool_model.ToolMD
                           ) -> Tuple[
                             Session,
-                          paragraph_tool_model.ParagraphTool
+                          tool_model.ToolDataModel
                           ]:
     if type(block.data) != ParagraphData:
         raise ValueError(f"object of ParagraphData class was expected but instead got {type(block.data)}")
@@ -342,6 +360,7 @@ def update_paragraph_tool_data(session: Session,
         ).one()
         p_tbl.text = block.data.text
         session.add(p_tbl)
+        session.commit()
     
     else:
         tool_cls = tool_name_cls_map[tool_name]
@@ -363,7 +382,7 @@ def update_quote_tool_data(session: Session,
                           tool_md: tool_model.ToolMD
                           ) -> Tuple[
                             Session,
-                          quote_tool_model.QuoteTool
+                          tool_model.ToolDataModel
                           ]:
     if type(block.data) != QuoteData:
         raise ValueError(f"object of QuoteData class was expected but instead got {type(block.data)}")
@@ -378,6 +397,7 @@ def update_quote_tool_data(session: Session,
         quote_tbl.caption = block.data.caption
         quote_tbl.alignment = block.data.alignment
         session.add(quote_tbl)
+        session.commit()
     
     else:
         tool_cls = tool_name_cls_map[tool_name]
@@ -403,7 +423,7 @@ def update_table_tool_data(session: Session,
                           tool_md: tool_model.ToolMD
                           ) -> Tuple[
                             Session,
-                          table_tool_model.TableTool
+                          tool_model.ToolDataModel
                           ]:
     if type(block.data) != TableData:
         raise ValueError(f"object of TableData class was expected but instead got {type(block.data)}")
@@ -416,6 +436,7 @@ def update_table_tool_data(session: Session,
         ).one()
         tt_tbl.content = block.data.content
         session.add(tt_tbl)
+        session.commit()
 
     else:
         tool_cls = tool_name_cls_map[tool_name]
