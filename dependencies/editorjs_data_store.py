@@ -8,14 +8,20 @@ from collections import namedtuple
 
 # AddToolOutput = namedtuple("AddToolOutputType", [""])
 
-# def add_tool_md(session: Session,
-#                 block: Block,
-#                 article_id ) -> Tuple[
-#                     Session, tool_model.ToolMD
-#                 ]:
-#     tool_md = tool_model.ToolMD(
-
-#     )
+def add_tool_md(session: Session,
+                block: Block,
+                article_id: uuid.UUID,
+                tool_id: uuid.UUID ) -> Tuple[
+                    Session, tool_model.ToolMD
+                ]:
+    tool_md = tool_model.ToolMD(
+        sequence= block.sequence,
+        article_id= article_id,
+        block_id= block.id,
+        tool_id= tool_id
+    )
+    session.add(tool_md)
+    return (session, tool_md)
 
 # create individual functions for adding record to the db
 def add_code_tool_data(session: Session, 
