@@ -34,6 +34,7 @@ class ListData(BaseModel):
 class Block(BaseModel):
     id: str
     type: str
+    sequence: int
     data: TableData | CodeToolData | ParagraphData | HeaderData | QuoteData | ListData
 
 class EditorJSSessionData(BaseModel):

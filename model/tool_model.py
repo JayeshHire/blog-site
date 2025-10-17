@@ -44,3 +44,8 @@ class ToolMD(SQLModel, table=True): # Tool Meta Data
     tool: Tool | None = Relationship(back_populates="tool_mds")
 
     __tablename__ = "tool_md"
+
+
+# All the tool data model classes inherit this class
+class ToolDataModel(SQLModel):
+    pass
