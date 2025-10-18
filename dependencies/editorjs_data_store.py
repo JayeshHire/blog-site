@@ -10,10 +10,14 @@ from collections import namedtuple
 
 def add_tool_md(session: Session,
                 block: Block,
-                article_id: uuid.UUID,
-                tool_id: uuid.UUID ) -> Tuple[
+                article_id: uuid.UUID
+                ) -> Tuple[
                     Session, tool_model.ToolMD
                 ]:
+    tool_id = session.exec(
+        select(tool_model.Tool)
+        .where(tool_model.Tool.name == block.type)
+    ).one().id
     tool_md = tool_model.ToolMD(
         sequence= block.sequence,
         article_id= article_id,
