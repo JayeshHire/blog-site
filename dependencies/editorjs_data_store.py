@@ -170,9 +170,10 @@ def add_table_tool_data(session: Session,
     return (session, tt_tbl)
 
 
-def update_ToolMD_tool_id(session: Session, 
+def update_ToolMD(session: Session, 
                           tool_md: tool_model.ToolMD,
-                          tool_name: str) -> Tuple [
+                          tool_name: str,
+                          block_id: str) -> Tuple [
                               Session,
                               tool_model.ToolMD
                           ]:
@@ -181,6 +182,7 @@ def update_ToolMD_tool_id(session: Session,
         .where(tool_model.Tool.name == tool_name)
     ).one().id
     tool_md.id = new_tool_id
+    tool_md.block_id = block_id
     session.add(tool_md)
     return (session, tool_md)
 
@@ -233,9 +235,10 @@ def update_code_tool_data(session: Session,
         #     tool_md_id= tool_md.id
         # )        
         # session.add(ct_tbl)
-        session, tool_md = update_ToolMD_tool_id(session=session,
+        session, tool_md = update_ToolMD(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= tool_name,
+                                                 block_id=block.id)
         session, ct_tbl = add_code_tool_data(session, 
                            block=block, 
                            tool_md_id= tool_md.id
@@ -281,9 +284,10 @@ def update_header_tool_data(session: Session,
         #     tool_md_id= tool_md.id
         # )
         # session.add(header_tool_inst)
-        session, tool_md = update_ToolMD_tool_id(session=session,
+        session, tool_md = update_ToolMD(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= tool_name,
+                                                 block_id=block.id)
         session, header_tool_inst = add_header_tool_data(
             session=session,
             block=block,
@@ -342,9 +346,10 @@ def update_list_tool_data(session: Session,
         ).one()
         session.delete(tool_inst)
 
-        session, tool_md = update_ToolMD_tool_id(session=session,
+        session, tool_md = update_ToolMD(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= tool_name,
+                                                 block_id=block.id)
         session, lt_tbl = add_list_tool_data(session=session,
                            block=block,
                            tool_md_id=tool_md.id
@@ -380,9 +385,10 @@ def update_paragraph_tool_data(session: Session,
         ).one()
         session.delete(tool_inst)
 
-        session, tool_md = update_ToolMD_tool_id(session=session,
+        session, tool_md = update_ToolMD(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= tool_name,
+                                                 block_id=block.id)
         session, p_tbl = add_paragraph_tool_data(session, block, tool_md.id)
     return (session, p_tbl)
 
@@ -417,9 +423,10 @@ def update_quote_tool_data(session: Session,
         ).one()
         session.delete(tool_inst)
 
-        session, tool_md = update_ToolMD_tool_id(session=session,
+        session, tool_md = update_ToolMD(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= tool_name,
+                                                 block_id=block.id)
         session, quote_tbl = add_quote_tool_data(
             session,
             block,
@@ -456,9 +463,10 @@ def update_table_tool_data(session: Session,
         ).one()
         session.delete(tool_inst)
 
-        session, tool_md = update_ToolMD_tool_id(session=session,
+        session, tool_md = update_ToolMD(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= tool_name,
+                                                 block_id=block.id)
         session, tt_tbl = add_table_tool_data(
             session,
             block,
