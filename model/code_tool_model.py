@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 import uuid
-from tool_model import ToolDataModel
+from .tool_model import ToolDataModel
 
 class CodeTool(ToolDataModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

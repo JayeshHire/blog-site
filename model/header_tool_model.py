@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field
 import uuid
-from tool_model import ToolDataModel
+from .tool_model import ToolDataModel
 
 
 class HeaderTool(ToolDataModel, table=True):
