@@ -2,4 +2,12 @@
 __pycache__/
 node_modules/
 pytest-tut/
+<<<<<<< HEAD
 .env
+=======
+.env
+development.db
+testing.db
+test.logs
+test_log
+>>>>>>> 082f70e (moved some tracked files to untracked area)
