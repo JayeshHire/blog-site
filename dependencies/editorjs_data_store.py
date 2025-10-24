@@ -14,6 +14,10 @@ def add_tool_md(session: Session,
                 tool_id: uuid.UUID ) -> Tuple[
                     Session, tool_model.ToolMD
                 ]:
+    tool_id = session.exec(
+        select(tool_model.Tool)
+        .where(tool_model.Tool.name == block.type)
+    ).one().id 
     tool_md = tool_model.ToolMD(
         sequence= block.sequence,
         article_id= article_id,
@@ -176,7 +180,8 @@ def update_ToolMD_tool_id(session: Session,
         select(tool_model.Tool)
         .where(tool_model.Tool.name == tool_name)
     ).one().id
-    tool_md.id = new_tool_id
+    tool_md.tool_id = new_tool_id
+    tool_md.block_id = block_id
     session.add(tool_md)
     return (session, tool_md)
 
@@ -231,7 +236,9 @@ def update_code_tool_data(session: Session,
         # session.add(ct_tbl)
         session, tool_md = update_ToolMD_tool_id(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= block.type)
+        
+        # raise ValueError(f"{tool_md}")
         session, ct_tbl = add_code_tool_data(session, 
                            block=block, 
                            tool_md_id= tool_md.id
@@ -279,7 +286,7 @@ def update_header_tool_data(session: Session,
         # session.add(header_tool_inst)
         session, tool_md = update_ToolMD_tool_id(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= block.type)
         session, header_tool_inst = add_header_tool_data(
             session=session,
             block=block,
@@ -340,7 +347,7 @@ def update_list_tool_data(session: Session,
 
         session, tool_md = update_ToolMD_tool_id(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= block.type)
         session, lt_tbl = add_list_tool_data(session=session,
                            block=block,
                            tool_md_id=tool_md.id
@@ -378,7 +385,7 @@ def update_paragraph_tool_data(session: Session,
 
         session, tool_md = update_ToolMD_tool_id(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= block.type)
         session, p_tbl = add_paragraph_tool_data(session, block, tool_md.id)
     return (session, p_tbl)
 
@@ -415,7 +422,7 @@ def update_quote_tool_data(session: Session,
 
         session, tool_md = update_ToolMD_tool_id(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= block.type)
         session, quote_tbl = add_quote_tool_data(
             session,
             block,
@@ -454,7 +461,7 @@ def update_table_tool_data(session: Session,
 
         session, tool_md = update_ToolMD_tool_id(session=session,
                                                  tool_md= tool_md,
-                                                 tool_name= tool_name)
+                                                 tool_name= block.type)
         session, tt_tbl = add_table_tool_data(
             session,
             block,
