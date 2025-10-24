@@ -3,3 +3,7 @@ __pycache__/
 node_modules/
 pytest-tut/
 .env
+development.db
+testing.db 
+test.logs
+test_log
