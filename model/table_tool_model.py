@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field, Column
 from sqlalchemy.types import JSON
 import uuid
 from typing import Any, Dict
-from tool_model import ToolDataModel
+from .tool_model import ToolDataModel
 
 
 class TableTool(ToolDataModel, table=True):

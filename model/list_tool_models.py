@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy.types import JSON
 import uuid
 from typing import Dict, Any, List
-from tool_model import ToolDataModel
+from .tool_model import ToolDataModel
 
 class ListToolTbl(ToolDataModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

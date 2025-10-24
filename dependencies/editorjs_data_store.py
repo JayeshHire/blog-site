@@ -10,8 +10,8 @@ from collections import namedtuple
 
 def add_tool_md(session: Session,
                 block: Block,
-                article_id: uuid.UUID,
-                tool_id: uuid.UUID ) -> Tuple[
+                article_id: uuid.UUID
+                ) -> Tuple[
                     Session, tool_model.ToolMD
                 ]:
     tool_id = session.exec(
