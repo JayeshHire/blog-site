@@ -6,15 +6,24 @@ import json
 from sqlalchemy.exc import IntegrityError
 import random
 import uuid
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Generator
 from editorjs_basemodel import Block
-from dependencies.editorjs_data_store import add_code_tool_data, add_header_tool_data, add_list_tool_data, add_paragraph_tool_data, add_quote_tool_data, add_table_tool_data, add_tool_md, tool_name_cls_map
+from dependencies.editorjs_data_store import add_code_tool_data, add_header_tool_data, add_list_tool_data, add_paragraph_tool_data, add_quote_tool_data, add_table_tool_data, add_tool_md, tool_name_cls_map, update_code_tool_data, update_header_tool_data, update_list_tool_data, update_paragraph_tool_data, update_quote_tool_data, update_table_tool_data
 from model import tool_model, table_tool_model
 
 
 load_dotenv()
 
 TEST_DATA_FILE = os.getenv("TEST_DATA_FILE")
+
+func_map = {
+        "table": add_table_tool_data,
+        "code": add_code_tool_data,
+        "paragraph": add_paragraph_tool_data,
+        "header": add_header_tool_data,
+        "quote": add_quote_tool_data,
+        "list": add_list_tool_data
+    }
 
 @pytest.fixture(name="session", scope="session")
 def get_session():
@@ -115,14 +124,7 @@ def get_insertion_data(request) -> Tuple[Block,
     block = Block.model_validate(tool_data)
     # with open("test_log", "a+") as f:
     #     f.write(f"BLOCK TYPE: {type(block)}\nBLOCK DATA: {block}\n\n")
-    func_map = {
-        "table": add_table_tool_data,
-        "code": add_code_tool_data,
-        "paragraph": add_paragraph_tool_data,
-        "header": add_header_tool_data,
-        "quote": add_quote_tool_data,
-        "list": add_list_tool_data
-    }
+    
     if "list" in tool_name:
         return (block, func_map["list"])
     return (block, func_map[tool_name])
@@ -168,3 +170,104 @@ def call_insertion_funcs(ready_session: Session,
     ).one()
     return (tool_data_model, td_model)
     # assert td_model == tool_data_model, f"The model of class {str(tool_cls)} has not been created"
+
+
+# create a fixture to accept a block, 
+# 
+
+# case 1: a function to read the json test data and create block items
+
+
+
+update_func_map = {
+    "table": update_table_tool_data,
+    "code": update_code_tool_data,
+    "paragraph": update_paragraph_tool_data,
+    "header": update_header_tool_data,
+    "quote": update_quote_tool_data,
+    "list": update_list_tool_data
+}
+
+""" 
+using the blocks from the above function
+first save the first block's data in db
+now update the tool data in the db 
+using the other block's data and return the newly
+created ToolDataModel object.
+"""
+
+
+
+
+# case 2: a function to read the json test data and create block items
+
+# perform the same steps as above for case 2
+# @pytest.fixture(name="case2_block")
+# def get_test_blocks_case2(request) -> Block:
+#     tool_name = request.param
+#     with open(TEST_DATA_FILE, 'r') as f:
+#         data = json.load(f)
+#         updation_td = data["tests"]["updation-test-data"]["case_2_tests"] # updation test data
+#         tool_td = updation_td[f"{tool_name}-data"]
+#     return Block.model_validate(tool_td)
+
+
+@pytest.fixture(name="case2_blocks")
+def get_test_blocks_case2(request) -> list[Block]:
+    tn = request.param
+    tool_names = ["table","code","paragraph","header","quote", "unordered-list", "ordered-list", "checklist"]
+    tool_td_ls = [] # tool test data list
+    with open(TEST_DATA_FILE, 'r') as f:
+        data = json.load(f)
+        updation_td = data["tests"]["updation-test-data"]["case_2_tests"] # updation test data
+
+    tool_td = updation_td[f"{tn}-data"]
+    block = Block.model_validate(tool_td)
+    block.id = str(uuid.uuid4())
+    tool_td_ls.append(block)
+
+    tool_names = [tname for tname in tool_names  if tname != tn]
+
+    for tool_name in tool_names:
+        tool_td = updation_td[f"{tool_name}-data"]
+        block = Block.model_validate(tool_td)
+        block.id = str(uuid.uuid4())
+        tool_td_ls.append(block)
+    
+    # first element in the list is the passed tool name 
+    # block data and the other data is except the first one.
+    # create the db obj for first one, and update the db using the other records
+    return tool_td_ls 
+
+
+@pytest.fixture(name="case2_updated_tools")
+def updated_tools(case2_blocks: list[Block],
+                  ready_session: Session,
+                  article_id: uuid.UUID
+                  ) -> Callable [
+                      [],
+                      Generator[
+                        Tuple[tool_model.ToolMD, tool_model.ToolDataModel, tool_model.ToolDataModel],
+                        None,
+                        None
+                        ]
+                  ]:
+    # insert the first record in the list
+    first = case2_blocks[0]
+    ready_session, tool_md = add_tool_md(ready_session, first, article_id)
+    ready_session, db_obj = func_map[first.type](ready_session, first, tool_md.id)
+    
+    # call the update func on the other records
+
+    def update_tool_gen() -> Generator[
+        Tuple[tool_model.ToolMD, tool_model.ToolDataModel, tool_model.ToolDataModel],
+        None,
+        None
+    ]:
+        nonlocal ready_session
+    
+        for block in case2_blocks[1::]:
+            ready_session, updated_obj = update_func_map[block.type](ready_session, block, tool_md)
+            yield (tool_md, updated_obj, db_obj)
+
+    return update_tool_gen
