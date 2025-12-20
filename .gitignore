@@ -5,3 +5,4 @@ pytest-tut/
 .env
 test.logs
 test_log
+update_paragraph.log
