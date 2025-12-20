@@ -8,6 +8,8 @@ from typing import Any, Optional, List, Annotated
 from database import get_session, init_db_setup
 from sqlmodel import Session, select
 from editorjs_basemodel import *
+from dependencies.editorjs_data_store import store_editorjs_data
+
 
 @asynccontextmanager
 async def lifespan( app: FastAPI):
@@ -28,7 +30,7 @@ async def get_index():
 
 
 @app.post("/editorjs")
-async def create_data(editorjsdata: Annotated[ bool, Depends(save_editorjs_data)]):
+async def create_data(editorjsdata: Annotated[ bool, Depends(store_editorjs_data)]):
     if editorjsdata:
         return "SUCCESS"
     return "FAILURE"

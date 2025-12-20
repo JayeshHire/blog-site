@@ -31,7 +31,7 @@ saveBtn.addEventListener("click", async () => {
         // below values should be replaced according to the user session data
         outputData.logged_in_session_id = "abcdf" ;
         outputData.browser_session_id = "dbshfg" ;
-
+        outputData.article_id = "fc03e17b460545beafd1b0c0bc8747c4" ;
         console.log(JSON.stringify(outputData));
         console.log("hello") ;
         post_data(outputData, "http://127.0.0.1:8000/editorjs");

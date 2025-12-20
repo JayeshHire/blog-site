@@ -1,14 +1,14 @@
 from sqlmodel import SQLModel, Field, Column, Relationship
 from sqlalchemy.types import JSON
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, List
+from .tool_model import ToolDataModel
 
-
-class ListToolTbl(SQLModel, table=True):
+class ListToolTbl(ToolDataModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     style: str
     meta: Dict[str, Any] = Field(sa_column=Column(JSON))
-    sequence: int | None = Field(default= None)
+    # sequence: int | None = Field(default= None)
 
     tool_md_id: uuid.UUID = Field(foreign_key="tool_md.id")
 
@@ -24,7 +24,7 @@ class ListToolTbl(SQLModel, table=True):
 #     __tablename__ = "item_list"
 
 
-class Item(SQLModel, table=True):
+class Item(ToolDataModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     lttbl_id: uuid.UUID | None = Field(foreign_key="list_tool_tbl.id") # list_tool_table
     sequence: int 
