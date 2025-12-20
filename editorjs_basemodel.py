@@ -34,7 +34,6 @@ class ListData(BaseModel):
 class Block(BaseModel):
     id: str
     type: str
-    sequence: int | None = None 
     data: TableData | CodeToolData | ParagraphData | HeaderData | QuoteData | ListData
 
 class EditorJSSessionData(BaseModel):
@@ -43,4 +42,3 @@ class EditorJSSessionData(BaseModel):
     version: str
     logged_in_session_id: str
     browser_session_id: str
-    article_id: str 

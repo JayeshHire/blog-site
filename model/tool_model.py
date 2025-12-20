@@ -41,12 +41,6 @@ class ToolMD(SQLModel, table=True): # Tool Meta Data
     article: Article | None = Relationship(back_populates="tool_mds")
 
     tool_id: int = Field(default=None, foreign_key="tool.id")
-    tool: Tool | None = Relationship(back_populates="tool_mds",\
-                                     sa_relationship_kwargs={"lazy": "selectin"})
+    tool: Tool | None = Relationship(back_populates="tool_mds")
 
     __tablename__ = "tool_md"
-
-
-# All the tool data model classes inherit this class
-class ToolDataModel(SQLModel):
-    pass
