@@ -8,7 +8,7 @@ import random
 import uuid
 from typing import Callable, Tuple, Generator
 from editorjs_basemodel import Block
-from dependencies.editorjs_data_store import add_code_tool_data, add_header_tool_data, add_list_tool_data, add_paragraph_tool_data, add_quote_tool_data, add_table_tool_data, add_tool_md, tool_name_cls_map, update_code_tool_data, update_header_tool_data, update_list_tool_data, update_paragraph_tool_data, update_quote_tool_data, update_table_tool_data
+from dependencies.editorjs_data_store import add_tool_md, tool_name_cls_map, func_map, update_func_map
 from model import tool_model, table_tool_model
 
 
@@ -16,14 +16,14 @@ load_dotenv()
 
 TEST_DATA_FILE = os.getenv("TEST_DATA_FILE")
 
-func_map = {
-        "table": add_table_tool_data,
-        "code": add_code_tool_data,
-        "paragraph": add_paragraph_tool_data,
-        "header": add_header_tool_data,
-        "quote": add_quote_tool_data,
-        "list": add_list_tool_data
-    }
+# func_map = {
+#         "table": add_table_tool_data,
+#         "code": add_code_tool_data,
+#         "paragraph": add_paragraph_tool_data,
+#         "header": add_header_tool_data,
+#         "quote": add_quote_tool_data,
+#         "list": add_list_tool_data
+#     }
 
 @pytest.fixture(name="session", scope="session")
 def get_session():
@@ -179,14 +179,14 @@ def call_insertion_funcs(ready_session: Session,
 
 
 
-update_func_map = {
-    "table": update_table_tool_data,
-    "code": update_code_tool_data,
-    "paragraph": update_paragraph_tool_data,
-    "header": update_header_tool_data,
-    "quote": update_quote_tool_data,
-    "list": update_list_tool_data
-}
+# update_func_map = {
+#     "table": update_table_tool_data,
+#     "code": update_code_tool_data,
+#     "paragraph": update_paragraph_tool_data,
+#     "header": update_header_tool_data,
+#     "quote": update_quote_tool_data,
+#     "list": update_list_tool_data
+# }
 
 """ 
 using the blocks from the above function

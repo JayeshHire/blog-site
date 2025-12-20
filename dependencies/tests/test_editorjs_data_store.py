@@ -1,9 +1,9 @@
 import pytest
 from typing import Literal, Tuple, Generator, Callable
 from model import tool_model, code_tool_model
-from editorjs_basemodel import Block
+from editorjs_basemodel import Block, EditorJSSessionData
 from sqlmodel import Session, select
-from dependencies.editorjs_data_store import tool_name_cls_map
+from dependencies.editorjs_data_store import tool_name_cls_map, store_editorjs_data
 import uuid
 from sqlalchemy.exc import InvalidRequestError
 import json
@@ -115,3 +115,38 @@ def test_updation_methods_case2(case2_updated_tools: Callable[[],
             assert created_obj == None
     except StopIteration:
         return 
+
+
+def test_editorjs_data_storage(session: Session):
+    # with Session()
+    article_id = session.exec(
+        select(tool_model.Article)
+        .limit(1)
+    ).first().id
+
+    data = {"time": 1761490303048,
+            "blocks":[
+                {"id":"PCdE5q0ExS",
+                 "type":"paragraph",
+                 "data":{"text":"hii"}
+                 },
+                 {"id":"g-Cn8w_9fH",
+                  "type":"paragraph",
+                  "data":{"text":"hello"}
+                  },
+                  {"id":"638i8uEpJT",
+                   "type":"header",
+                   "data":{"text":"how are you guys?","level":2}
+                   },
+                   {"id":"bp1dabjWiY",
+                    "type":"paragraph",
+                    "data":{"text":"I hope you are fine"}
+                    }
+                ],
+                "version":"2.31.0",
+                "logged_in_session_id":"abcdf",
+                "browser_session_id":"dbshfg",
+                "article_id":f"{article_id}"
+                }
+    
+    store_editorjs_data(EditorJSSessionData.model_validate(data))

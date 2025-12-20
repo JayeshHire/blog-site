@@ -38,7 +38,7 @@ def tool_tbl_setup():
         { "name": "paragraph", "class_name": "Paragraph"},
         { "name": "header", "class_name": "Header"},
         { "name": "quote", "class_name": "Quote"},
-        { "name": "List", "class_name": "EditorjsList"},
+        { "name": "list", "class_name": "EditorjsList"},
     ]
 
     for t in tool_dict:
@@ -92,7 +92,7 @@ def init_db_setup():
     create_db_tables()
     user_tbl_setup()
     tool_tbl_setup()
-    # article_tbl_setup()
+    article_tbl_setup()
 
 if __name__ == "__main__":
     init_db_setup()
