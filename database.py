@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, create_engine, Session, select
-from model import code_tool_model, header_tool_model, list_tool_models, paragraph_tool_model, quote_tool_model, table_tool_model, tool_model
+from model import code_tool_model, header_tool_model, list_tool_models, paragraph_tool_model, quote_tool_model, table_tool_model, tool_model, user_model
 from sqlalchemy.exc import IntegrityError
 from  fastapi import Depends
 from typing import Annotated
@@ -17,9 +17,9 @@ def get_session():
         yield session
 
 def user_tbl_setup():
-    user1 = tool_model.User(username="joe pesci", email="joe@gmail.com")
-    user2 = tool_model.User(username="John Doe", email="john@gmail.com")
-    user3 = tool_model.User(username="james", email="james@gmail.com")
+    user1 = user_model.User(username="joe pesci", email="joe@gmail.com", hashed_password="hudyejshen")
+    user2 = user_model.User(username="John Doe", email="john@gmail.com", hashed_password="hudyejshen")
+    user3 = user_model.User(username="james", email="james@gmail.com",hashed_password="hudyejshen")
 
     with Session(engine) as session:
             try:
@@ -57,7 +57,7 @@ def article_tbl_setup():
         
         with session.begin_nested():
             user1, user2 = session.exec(
-                select(tool_model.User).limit(2)
+                select(user_model.User).limit(2)
                 ).all()
             article_dicts = [
                 {

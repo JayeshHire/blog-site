@@ -1,6 +1,7 @@
 from sqlmodel import SQLModel, Field, Relationship
 import uuid
 from datetime import datetime
+from . import user_model
 
 
 class Tool(SQLModel, table=True):
@@ -11,13 +12,13 @@ class Tool(SQLModel, table=True):
     tool_mds: list["ToolMD"] | None = Relationship(back_populates="tool")
 
 
-class User(SQLModel, table=True):
-    id: uuid.UUID = Field(default_factory= uuid.uuid4, primary_key=True)
-    username: str = Field(unique=True)
-    email: str = Field(unique= True)
-    last_login: datetime | None = Field(default_factory=datetime.now)
+# class User(SQLModel, table=True):
+#     id: uuid.UUID = Field(default_factory= uuid.uuid4, primary_key=True)
+#     username: str = Field(unique=True)
+#     email: str = Field(unique= True)
+#     last_login: datetime | None = Field(default_factory=datetime.now)
 
-    articles: list["Article"] | None = Relationship(back_populates="author")
+#     articles: list["Article"] | None = Relationship(back_populates="author")
 
 
 class Article(SQLModel, table=True):
@@ -27,7 +28,7 @@ class Article(SQLModel, table=True):
     pub_datetime: datetime = Field(default_factory= datetime.now)
     # path_url: str | None = Field(default=None)
     author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
-    author: User | None = Relationship(back_populates="articles")
+    author: user_model.User | None = Relationship(back_populates="articles")
 
     tool_mds: list["ToolMD"] | None = Relationship(back_populates="article")
 
