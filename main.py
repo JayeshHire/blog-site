@@ -18,12 +18,13 @@ async def lifespan( app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.mount("/static", StaticFiles(directory="dist"), name="static")
+app.mount("/bundled-js", StaticFiles(directory="dist"), name="bundle")
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
-    with open("./index.html", 'r') as f:
+    with open("./static/html/main.html", 'r') as f:
         content = f.read()
     return content
 
