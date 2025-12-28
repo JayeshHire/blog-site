@@ -23,7 +23,9 @@ async def lifespan( app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.mount("/static", StaticFiles(directory="dist"), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+app.mount("/bundled-js", StaticFiles(directory="dist"), name="bundle")
 
 app.add_middleware(SessionMiddleware, 
                    secret_key="#234Hdjiru85&8$hd^&!jdkf+=-09*HgY&8^4",
@@ -95,7 +97,7 @@ async def get_profile(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
-    with open("./index.html", 'r') as f:
+    with open("./static/html/main.html", 'r') as f:
         content = f.read()
     return content
 

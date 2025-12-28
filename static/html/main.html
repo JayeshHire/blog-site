@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- <link rel="stylesheet" href="style.css"> -->
+     <link rel="stylesheet" href="/static/html/style.css">
+</head>
+<body>
+    <button id="save-btn">
+        Save
+    </button>
+    <button id="test-btn">
+        Test
+    </button>
+    
+    <div class="accessible-settings">
+        <div class="option-box">
+            <div class="option-icon">
+                <img src="/static/assets/option-icon.png" alt="">
+            </div>
+            <div class="options">
+                <div class="option" id="op-drafts">
+                    Drafts
+                </div>
+                <div class="option" id="op-pub-articles">
+                    Published articles
+                </div>
+                <div class="option" id="op-comm-articles">
+                    Community articles
+                </div>
+            </div>
+        </div>
+        <div class="profile-info">
+            <div class="profile-icon">
+                <img src="/static/assets/profile-icon.png" alt="">
+            </div>
+            <div class="profile-option-list">
+                <div class="p-option" id="op-login">
+                    login
+                </div>
+                <div class="p-option" id="op-signup">
+                    signup
+                </div>
+                <div class="p-option" id="op-logout">
+                    logout
+                </div>
+                <div class="p-option" id="op-profile-setting">
+                    profile settings
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="options-content-window">
+        <div class="lay-box h-100w-100">
+
+        </div>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="lay-box box1"></div>
+        <div class="lay-box box1">
+            <div class="editor-layout">
+                <div class="editor-container">
+                    <div id="article_info_editor">
+
+                    </div>
+                    <div id="editor">
+
+                    </div>
+                </div>
+                
+                <!-- <div class="lay-box">
+                </div> -->
+            </div>
+        </div>
+        <!-- <div class="lay-box"></div>
+        <div class="lay-box"></div>
+        <div class="lay-box"></div> -->
+    </div>
+
+    <script>
+        const body = document.body ;
+
+        // changing the visibility of the general options list
+        const optionIcon = document.querySelector(".option-icon");
+        const optionListEle = document.querySelector(".options");
+        optionListEle.style.visibility = "hidden" ;
+        optionIcon.addEventListener("click", () => {
+            let curr = optionListEle.style.visibility ;
+            if (curr == "hidden") {
+                optionListEle.style.visibility = "visible" ;
+            } else if (curr == "visible") {
+                optionListEle.style.visibility = "hidden" ;
+            }
+        }) ;
+
+        // changing the visibility of the profile options list
+        const profileIconEle = document.querySelector(".profile-icon img") ;
+        const profileOptionListEle = document.querySelector(".profile-option-list");
+        profileOptionListEle.style.visibility = "hidden" ;
+        profileIconEle.addEventListener("click", () => {
+            let curr_visibility = profileOptionListEle.style.visibility ;
+            if (curr_visibility == "hidden") {
+                profileOptionListEle.style.visibility = "visible" ;
+            } else if  (curr_visibility == "visible") {
+                profileOptionListEle.style.visibility = "hidden" ;
+            }
+        });
+
+        // showing the detail info for each item
+        const optionIdTextMp = new Map() ;
+        optionIdTextMp.set('op-drafts', 
+            'this is the list of drafts written by you\ndraft 1\n draft 2\ndraft 3'
+        ) ;
+        optionIdTextMp.set('op-pub-articles', 
+            'this is the list of your published articles\narticle 1\n article 2\article 3'
+        ) ;
+        optionIdTextMp.set('op-comm-articles',
+            'this is the list of community articles published by other creators\narticle 1\n article 2\article 3'
+        ) ;
+        optionIdTextMp.set('op-profile-setting',
+            'this is the list of profile settings read by the logged in user.'
+        ) ;
+        optionIdTextMp.set('op-logout', 
+            'this is the option for logging out. this will show a short form for logging out'
+        ) ;
+        optionIdTextMp.set('op-signup', 
+            'this is the option for signing up. This is for new user. This will open a new form for users to enter information and signin.'
+        ) ;
+        optionIdTextMp.set('op-login',
+            'this is the option for logging in to the application for already existing users.'
+        )
+
+        const opContentWin = document.querySelector(".options-content-window") ;
+        opContentWin.style.visibility = "hidden" ;
+
+        // clicking anywhere on the screen should remove the options
+        body.addEventListener("click", (event) => {
+            if (!optionIcon.contains(event.target) && 
+            !profileIconEle.contains(event.target)
+        ) {
+                if (profileOptionListEle.style.visibility == "visible" ||
+                    optionListEle.style.visibility == "visible"
+                ) {
+                    if (profileOptionListEle.contains(event.target) || 
+                    optionListEle.contains(event.target) || 
+                    opContentWin.contains(event.target)
+                ){
+                        opContentWin.style.visibility = "visible" ;
+                    } else {
+                        opContentWin.style.visibility = "hidden" ;
+                    }
+                } else {
+                    if (!opContentWin.contains(event.target)){
+                        opContentWin.style.visibility = "hidden" ;
+                    }
+                }
+                profileOptionListEle.style.visibility = "hidden" ;
+                optionListEle.style.visibility = "hidden" ;
+            } 
+
+        }) ;
+
+        for (const [ele_id, text] of optionIdTextMp){
+            const ele = document.getElementById(ele_id) ;
+            const opContentWinChild = document.querySelector(".options-content-window div") ;
+            ele.addEventListener("click", ()=> {
+                opContentWin.style.visibility = "visible" ;
+                opContentWinChild.innerText = text ;
+            }) ;
+        }
+
+    </script>
+
+    <script type="module" src="./bundled-js/bundle.js"></script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import editor from './editor_obj.js'
+import {editor, articleInfoEditor} from './editor_obj.js'
 
 async function post_data(data, url){
     console.log("entering post function") ;
@@ -50,4 +50,15 @@ testBtn.addEventListener("click", () => {
     }).then((res) => {
         console.log(res) ;
     }) ;
-})
+});
+
+
+// preventing creation of new block on enter
+const articleDataContainer = document.getElementById("article_info_editor");
+
+articleDataContainer.addEventListener("keydown", (e) => {
+    if (e.key == "Enter") {
+        e.preventDefault() ;
+        e.stopPropagation();
+    }
+}, true) ;

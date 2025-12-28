@@ -4,7 +4,7 @@ import uuid
 from . import tool_model
 
 class UserBase(SQLModel):
-    full_name: str | None 
+    full_name: str | None = None
     username: str | None = Field(default=None, unique=True)
 
 
