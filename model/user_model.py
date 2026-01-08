@@ -2,6 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship
 from pydantic import field_validator, ValidationError
 import uuid
 from . import tool_model
+from datetime import datetime
 
 class UserBase(SQLModel):
     full_name: str | None = None
@@ -15,6 +16,8 @@ class User(UserBase, table=True):
     email: str = Field(unique=True)
     hashed_password: str 
     articles: list["tool_model.Article"] | None = Relationship(back_populates="author")
+    is_logged_in: bool = False 
+    last_login: datetime
     
     @field_validator('username', mode='before')
     @classmethod
