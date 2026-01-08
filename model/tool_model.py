@@ -23,12 +23,17 @@ class Tool(SQLModel, table=True):
 
 class Article(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory= uuid.uuid4, primary_key=True)
-    title: str
-    subtitle: str
+    title: str | None = Field(default=None)
+    subtitle: str | None = Field(default=None)
+    editor_session_id: uuid.UUID = Field(foreign_key="editor_session.id")
     pub_datetime: datetime = Field(default_factory= datetime.now)
     # path_url: str | None = Field(default=None)
     author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
     author: user_model.User | None = Relationship(back_populates="articles")
+ 
+    '''
+    article is either created during a session where 
+    '''
 
     tool_mds: list["ToolMD"] | None = Relationship(back_populates="article")
 
@@ -51,3 +56,13 @@ class ToolMD(SQLModel, table=True): # Tool Meta Data
 # All the tool data model classes inherit this class
 class ToolDataModel(SQLModel):
     pass
+
+class EditorSession(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    logged_in: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.now)
+    user_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
+    expiry_date: datetime | None = Field(default=None)
+    browser_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+
+    __tablename__ = "editor_session"
