@@ -4,9 +4,10 @@ from database import get_session
 from uuid import UUID
 from typing import Annotated
 from sqlmodel import select
+from pydantic import ValidationError
 from sqlalchemy import or_
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from datetime import datetime
+from datetime import datetime, timedelta
 from user_basemodel import SigninBaseModel, SignupBaseModel
 from passlib.context import CryptContext
 
@@ -22,7 +23,7 @@ we will change the author id for the user from None to current username.
 '''
 def create_editor_session(request: Request, response: Response ) -> tool_model.EditorSession:
     session = next(get_session())
-    editor_session = tool_model.EditorSession()
+    editor_session = tool_model.EditorSession(expiry_date=datetime.now()+timedelta(days=1))
     session.add(editor_session)
     article = tool_model.Article(editor_session_id=editor_session.id)
     session.add(article)
@@ -33,13 +34,14 @@ def create_editor_session(request: Request, response: Response ) -> tool_model.E
     # )
     response.set_cookie(
         key="browser_id",
-        value=editor_session.browser_id
+        value=str(editor_session.browser_id)
     )
     # whenever we will need to fetch the data for 
     # previous application state. We'll fetch it through 
     # the browser_id key stored as a cookie on the browser.
-    request.session["editor_session_id"] = editor_session.id 
-    request.session["browser_id"] = editor_session.browser_id
+    request.session["editor_session_id"] = str(editor_session.id) 
+    request.session["browser_id"] = str(editor_session.browser_id)
+    session.expunge(editor_session)
     return editor_session
 
 
@@ -51,13 +53,18 @@ get the session object using the browser_id from the browser.
     which is not expired.
 - return the session object. [article id is more important here.]
 '''
-def get_editor_session(browser_id: UUID | None = None):
+def get_editor_session(request, response, browser_id: UUID | None = None):
+    # print(f"browser id: {browser_id}")
     session = next(get_session())
     if browser_id:
-        editor_session = session.exec(
-            select(tool_model.EditorSession)
-            .where(tool_model.EditorSession.browser_id == browser_id)
-        ).one()
+        try:
+            editor_session = session.exec(
+                select(tool_model.EditorSession)
+                .where(tool_model.EditorSession.browser_id == browser_id)
+            ).one()
+            session.expunge(editor_session)
+        except NoResultFound:
+            editor_session = create_editor_session(request, response)
         if editor_session.expiry_date > datetime.now():
             return editor_session
         return None 
@@ -69,7 +76,7 @@ orachestrating the sessions.
 def editor_session_orchestrator(request: Request,
                                 response: Response,
                                 browser_id: Annotated[UUID | None, Cookie()] = None) -> tool_model.EditorSession:
-    editor_session = get_editor_session(browser_id=browser_id) 
+    editor_session = get_editor_session(request, response, browser_id=browser_id) 
     if editor_session is None:
         editor_session = create_editor_session(request, response)
         return editor_session
@@ -82,7 +89,7 @@ def get_curr_article_or_make_new(request: Request,
         This should get the last article which was present on the editor.
     '''
     user_id = request.session.get("user_id")
-    session = next(get_session)
+    session = next(get_session())
     if user_id:
         curr_user = session.exec(
             select(user_model.User)
@@ -150,24 +157,27 @@ Following functions will do the login for a user.
 def user_login(request: Request, 
                response: Response, 
                user: Annotated[SigninBaseModel, Form()], 
-               browser_id: Annotated[UUID | None, Cookie()] = None):
+               browser_id: Annotated[UUID | None, Cookie()] = None) -> dict:
     ''' 
     This function will login an already existing user.
     '''
     if browser_id is None:
         editor_session = create_editor_session(request, response)
     else:
-        editor_session = get_editor_session(browser_id)
+        editor_session = get_editor_session(request, response, browser_id)
         # if the editor session has expired, create a new session
         if editor_session is None:
             editor_session = create_editor_session(request, response)
 
-    session = next(get_session)
+    session = next(get_session())
 
     # get the existing user
+    existing_user_dict = None 
     try: 
         if '@' in user.username_or_email:
+            # print("inside @")
             email = user.username_or_email
+            # print("email: ", email)
             existing_user = session.exec(
                 select(user_model.User)
                 .where(user_model.User.email == email)
@@ -178,6 +188,7 @@ def user_login(request: Request,
                 select(user_model.User)
                 .where(user_model.User.username == username)
             ).one()
+        existing_user_pub = user_model.UserPublic.model_validate(existing_user)
     except NoResultFound:
         raise HTTPException(status_code= status.HTTP_404_NOT_FOUND,
                             detail="User not found")
@@ -186,46 +197,65 @@ def user_login(request: Request,
     # check if the password is correct with the hash present in the db
     is_correct = verify_password(user.password, existing_user.hashed_password)
     if is_correct:
-        request.session["user_id"] = existing_user.id
+        request.session["user_id"] = str(existing_user.id)
         request.session["username"] = existing_user.username
         request.session["email"] = existing_user.email
         existing_user.is_logged_in = True 
         existing_user.last_login = datetime.now()
         editor_session.user_id = existing_user.id  
         editor_session.logged_in = True 
+        # print("Existing user 1")
+        # print(existing_user)
         session.add(existing_user)
         session.add(editor_session)
         session.commit() 
+        # print("Existing user")
+        # print(existing_user)
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Password is incorrect")
-    pass 
+    # pass 
+    # print("hello world")
+    # print(existing_user)
+    return existing_user_pub
+
 
 def user_signup(request: Request,
                 response: Response,
-                user_create: user_model.UserCreate,
+                user_create: Annotated[user_model.UserCreate, Form()] ,
                 browser_id: Annotated[UUID | None, Cookie()] = None
-                ):
+                ) -> user_model.UserPublic:
     ''' 
     This function will register a new user and logs in the user.
     '''
 
     # create a user.
-    session = next(get_session)
+    session = next(get_session())
     hashed_password = hash_password(user_create.password)
-    new_user = user_model.User.model_validate(user_create, update={"hashed_password": hashed_password})
+    try:
+        new_user = user_model.User.model_validate(user_create, update={
+            "hashed_password": hashed_password,
+            "last_login": datetime.now()
+            })
+    except ValidationError as e:
+        # print(user_model.User.model_validate(user_create, update={"hashed_password": hashed_password}))
+        # print(e)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="username field should not contain '@' symbol"
+        )
     new_user.is_logged_in = True
     new_user.last_login = datetime.now()
     try:
         session.add(new_user)
-        session.commit()
+        # session.commit()
     except IntegrityError:
-        session.rollback()
+        # session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User with the same email or username already exists"
         )
-    request.session["user_id"] = new_user.id
+    request.session["user_id"] = str(new_user.id)
     request.session["username"] = new_user.username
     request.session["email"] = new_user.email
 
@@ -237,27 +267,31 @@ def user_signup(request: Request,
     if browser_id is None:
         editor_session = create_editor_session(request, response)
     else: 
-        editor_session = get_editor_session(browser_id)
+        editor_session = get_editor_session(request, response, browser_id)
         if editor_session is None:
             editor_session = create_editor_session(request, response)
     editor_session.user_id = new_user.id
     editor_session.logged_in = True 
     session.add(editor_session)
+    pub_user = user_model.UserPublic.model_validate(new_user)
+    # pub_user_dict = pub_user.model_dump(mode="json")
     session.commit()
+    return pub_user
 
 
-def user_logout(request: Request, 
-                browser_id: Annotated[UUID | None, Cookie()] = None):
-    session = next(get_session)
+def user_logout(request: Request,
+                response: Response,
+                browser_id: Annotated[UUID | None, Cookie()] = None) -> bool:
+    session = next(get_session())
     user_id = request.session.get("user_id")
 
-    editor_session = get_editor_session(browser_id) if browser_id is not None else None 
+    editor_session = get_editor_session(request, response, browser_id) if browser_id is not None else None 
     if editor_session:
         editor_session.logged_in = False
         session.add(editor_session)
 
     if user_id:
-        user = session.get(user_model.User, user_id)
+        user = session.get(user_model.User, UUID(user_id))
         if user is None:
             # this is a big error in the system.
             # application should crash in development here if this occurs
@@ -269,7 +303,7 @@ def user_logout(request: Request,
         user.last_login = datetime.now()
         session.add(user)
     session.commit()
-    
+    return True 
 
 
 

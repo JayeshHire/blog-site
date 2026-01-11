@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from pydantic import field_validator, ValidationError
+from pydantic import field_validator, ValidationError, field_serializer
 import uuid
 from . import tool_model
 from datetime import datetime
@@ -12,12 +12,12 @@ class UserBase(SQLModel):
 class User(UserBase, table=True):
     # full_name: str | None 
     # username: str | None 
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True, exclude=True)
     email: str = Field(unique=True)
     hashed_password: str 
     articles: list["tool_model.Article"] | None = Relationship(back_populates="author")
     is_logged_in: bool = False 
-    last_login: datetime
+    last_login: datetime 
     
     @field_validator('username', mode='before')
     @classmethod
@@ -25,6 +25,10 @@ class User(UserBase, table=True):
         if value is not None and '@' in value:
             raise ValueError(f"Username should not contain '@' symbol. Current value of username is `username={value}")
         return value
+    
+    @field_serializer("id")
+    def id_uuid2str(self, value: uuid.UUID):
+        return str(value)
     
 
 class UserPublic(UserBase):

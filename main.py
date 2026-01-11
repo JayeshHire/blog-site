@@ -10,6 +10,7 @@ from database import get_session, init_db_setup
 from sqlmodel import Session, select
 from editorjs_basemodel import *
 from dependencies.editorjs_data_store import store_editorjs_data
+from dependencies.session_depends import user_login, user_logout, user_signup
 from user_basemodel import SigninBaseModel, SignupBaseModel
 from model.user_model import UserCreate, UserPublic, User
 from passlib.context import CryptContext
@@ -43,50 +44,36 @@ def verify_password(password: str, hashed_password: str)->bool:
 
 @app.post("/signup")
 async def signup(request: Request, 
-                new_user: Annotated[UserCreate, Form()],
-                session: Annotated[Session, Depends(get_session)]
+                user: Annotated[UserPublic, Depends(user_signup)]
                 ) -> UserPublic | dict:
-    # encrypt the password before saving
-    hashed_password = hash_password(new_user.password)
-    try:
-        user = User.model_validate(new_user, update={"hashed_password": hashed_password})
-        session.add(user)
-        session.commit()
-        request.session["user"] = UserPublic.model_validate(user)
-    except IntegrityError:
-        return {"message": "User with this username or email already exists"}
-    except ValidationError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="username should not contain '@' symbol"
-        )
-    return new_user
+    return user
 
 @app.post("/signin")
 async def signin(request: Request, 
-                user: Annotated[SigninBaseModel, Form()],
-                session: Annotated[Session, Depends(get_session)]
+                user: Annotated[UserPublic, Depends(user_login)]
                 ):
-    # get existing user
-    try:
-        existing_user = session.exec(
-            select(User)
-            .where(or_(User.username == user.username_or_email,
-                       User.email == user.username_or_email))
-        ).one()
-        authorized = verify_password(user.password, existing_user.hashed_password)
-        if authorized:
-            request.session["user"] = UserPublic.model_validate(existing_user).model_dump()
-            return {"message": "logged in successfully"}
-        else:
-            return {"message": "try again. Your password is incorrect"}
-    except NoResultFound:
-        return {"message": "No user found"}
+    return user
+
 
 @app.get("/logout")
-async def logout(request: Request):
-    request.session.clear()
-    return {"message": "logged out"}
+async def logout(request: Request,
+                 is_logged_out: Annotated[bool, Depends(user_logout)]
+                 ):
+    if is_logged_out:
+        return {"message": "logged out"}
+    return {"message": "user is not logged out yet."}
+
+
+@app.get("/current_user") 
+async def get_curr_user(request: Request):
+    return {
+        'user_id': request.session.get("user_id"),
+        'username': request.session.get("username"),
+        'email': request.session.get("email"),
+        'editor_session_id': request.session.get('editor_session_id'),
+        'browser_id': request.session.get('browser_id')
+    }
+
 
 @app.get("/profile")
 async def get_profile(request: Request):
