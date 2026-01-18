@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body, Depends, Request, Form, HTTPException, status
+from fastapi import FastAPI, Body, Depends, Request, Form, HTTPException, status, Cookie
 from starlette.middleware.sessions import SessionMiddleware
 from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
@@ -10,12 +10,14 @@ from database import get_session, init_db_setup
 from sqlmodel import Session, select
 from editorjs_basemodel import *
 from dependencies.editorjs_data_store import store_editorjs_data
-from dependencies.session_depends import user_login, user_logout, user_signup
+from dependencies.session_depends import user_login, user_logout, user_signup, init_editor_session, store_article_data
 from user_basemodel import SigninBaseModel, SignupBaseModel
 from model.user_model import UserCreate, UserPublic, User
 from passlib.context import CryptContext
 from sqlmodel import or_
 from sqlalchemy.exc import NoResultFound, IntegrityError
+from model.tool_model import Article
+from uuid import UUID
 
 @asynccontextmanager
 async def lifespan( app: FastAPI):
@@ -83,13 +85,73 @@ async def get_profile(request: Request):
     return {"user": user}
 
 @app.get("/", response_class=HTMLResponse)
-async def get_index():
-    with open("./static/html/main.html", 'r') as f:
-        content = f.read()
-    return content
+async def get_index(initialized: Annotated[bool, Depends(init_editor_session)]):
+    if initialized:
+        with open("./static/html/main.html", 'r') as f:
+            content = f.read()
+        return content
+    else:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Failed to initialize the application."
+                            )
+    
+'''
+When a new caller calls the domain.
+Main index page is returned which consists
+of the editor and few user options.
+An editor session is created and a new article
+associated with that editor is created.
 
-@app.post("/editorjs")
+OnChange of title and subtitle, article objects
+title and subtitle is updated.
+
+If the user logs in then the article in the editor
+is associated with that user.
+
+OnChange of data in the article body. That data is
+updated in the db.
+'''
+
+@app.post("/editorjs/save/article/body")
 async def create_data(editorjsdata: Annotated[ bool, Depends(store_editorjs_data)]):
     if editorjsdata:
         return "SUCCESS"
     return "FAILURE"
+
+@app.get("/article/id")
+async def get_current_article_id(request: Request):
+    article_id = request.session.get("article_id")
+    return {"article_id": article_id}
+
+@app.post("/editorjs/save/article/head")
+async def save_article_head(article: Annotated[Article | None, Depends(store_article_data)]):
+    print(article)
+    if article: 
+        return "SUCCESS" 
+    return "FAILURE"
+    
+
+@app.get("/user/has_logged_in")
+async def has_logged_in(request: Request):
+    u_id = request.session.get("user_id")
+    if u_id:
+        return {
+            "type": "status",
+            "entity": "user",
+            "data": {
+                "has_logged_in": True
+            }
+        }
+    return  {
+            "type": "status",
+            "entity": "user",
+            "data": {
+                "has_logged_in": False
+            }
+        }
+
+# methods for populating the earlier states 
+# of the browser window
+@app.get("/load/article/head/previous_state")
+async def load_article_head(browser_id: Annotated[UUID | None, Cookie()]):
+    

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 
 # input and output data model for editorjs plugin
@@ -43,4 +43,34 @@ class EditorJSSessionData(BaseModel):
     version: str
     logged_in_session_id: str
     browser_session_id: str
-    article_id: str 
+    article_id: str
+
+class HeadBlock(BaseModel):
+    id: str 
+    type: str
+    data: HeaderData
+
+class ArticleHead(BaseModel):
+    time: int
+    blocks: List[HeadBlock]
+    version: str
+    article_id: str
+
+class TitleHeaderDataPub(BaseModel):
+    text: str 
+    level: int = Field(default=1, frozen=True)
+
+class SubtitleHeaderDataPub(BaseModel):
+    text: str 
+    level: int = Field(default=3, frozen=True)
+
+class TitleBlockPub(BaseModel):
+    type: str = Field(default="title", frozen=True)
+    data: TitleHeaderDataPub
+
+class SubtitleBlockPub(BaseModel):
+    type: str = Field(default="subtitle", frozen=True)
+    data: SubtitleHeaderDataPub
+
+class ArticleHeadPublic(BaseModel):
+    blocks: tuple[TitleBlockPub, SubtitleBlockPub] = None

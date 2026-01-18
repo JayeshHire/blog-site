@@ -95,7 +95,7 @@ def init_db_setup():
     create_db_tables()
     user_tbl_setup()
     tool_tbl_setup()
-    article_tbl_setup()
+    # article_tbl_setup()
 
 if __name__ == "__main__":
     init_db_setup()

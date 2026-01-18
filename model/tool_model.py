@@ -27,6 +27,7 @@ class Article(SQLModel, table=True):
     subtitle: str | None = Field(default=None)
     editor_session_id: uuid.UUID = Field(foreign_key="editor_session.id")
     pub_datetime: datetime = Field(default_factory= datetime.now)
+    last_updated_at: datetime = Field(default_factory=datetime.now)
     # path_url: str | None = Field(default=None)
     author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
     author: user_model.User | None = Relationship(back_populates="articles")
@@ -64,5 +65,6 @@ class EditorSession(SQLModel, table=True):
     user_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
     expiry_date: datetime | None = Field(default=None)
     browser_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    isopen: bool = Field(default=True)
 
     __tablename__ = "editor_session"

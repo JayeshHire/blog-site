@@ -9,7 +9,9 @@ from sqlalchemy import or_
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from datetime import datetime, timedelta
 from user_basemodel import SigninBaseModel, SignupBaseModel
+from editorjs_basemodel import ArticleHead, ArticleHeadPublic, TitleBlockPub, SubtitleBlockPub, TitleHeaderDataPub, SubtitleHeaderDataPub
 from passlib.context import CryptContext
+
 
 
 '''
@@ -53,25 +55,146 @@ get the session object using the browser_id from the browser.
     which is not expired.
 - return the session object. [article id is more important here.]
 '''
-def get_editor_session(request, response, browser_id: UUID | None = None):
-    # print(f"browser id: {browser_id}")
-    session = next(get_session())
+def get_editor_session(request: Request, 
+                       browser_id: UUID | None = None):
     if browser_id:
-        try:
-            editor_session = session.exec(
-                select(tool_model.EditorSession)
-                .where(tool_model.EditorSession.browser_id == browser_id)
-            ).one()
+        session = next(get_session())
+        user_id = request.session.get("user_id")
+        user_id = UUID(user_id) if user_id is not None else None
+        editor_session = session.exec(
+            select(tool_model.EditorSession)
+            .where(tool_model.EditorSession.browser_id == browser_id)
+            .where(tool_model.EditorSession.expiry_date > datetime.now())
+            .where(tool_model.EditorSession.user_id == user_id)
+        ).first()
+        if editor_session is None:
+            return None 
+        elif editor_session.logged_in:
             session.expunge(editor_session)
-        except NoResultFound:
-            editor_session = create_editor_session(request, response)
-        if editor_session.expiry_date > datetime.now():
+            request.session['editor_session_id'] = editor_session.id
             return editor_session
-        return None 
-    return None 
+        elif user_id is None:
+            return editor_session
+        else: 
+            return None
+    else:
+        return None
+    
 
 ''' 
-orachestrating the sessions.
+initialize the editor session
+'''
+def init_editor_session(request: Request, 
+                        response: Response,
+                        browser_id: Annotated[UUID | None, Cookie()] = None
+                        ):
+    if browser_id:
+        editor_session = get_editor_session(request, browser_id)
+        if editor_session is None:
+            editor_session = create_editor_session(request, response)
+        session = next(get_session())
+        try:
+            article = session.exec(
+                select(tool_model.Article)
+                .where(tool_model.Article.editor_session_id == editor_session.id)
+                .order_by(tool_model.Article.last_updated_at.desc())
+            ).first()
+        except NoResultFound:
+            article = create_new_article(request)
+    else:
+        editor_session = create_editor_session(request, response)
+        article = create_new_article(request)
+    return True # session info tup
+
+
+''' 
+get the article for the current editor session.
+'''
+def get_article(request: Request,
+                browser_id: UUID | None = None
+                ):
+    ''' 
+    I am assuming that during the initialization
+    process an editor session is created for the browser if
+    one does not exists and an article is associated with the
+    editor session.
+    '''
+    editor_session_id = UUID(request.session.get("editor_session_id"))
+    session = next(get_session())
+    article = session.exec(
+        select(tool_model.Article)
+        .where(tool_model.Article.editor_session_id == editor_session_id)
+        .order_by(tool_model.Article.last_updated_at.desc())
+    ).first()
+    request.session['article_id'] = str(article.id)
+    session.expunge(article)
+    return article
+
+
+'''
+
+'''
+def create_new_article(request: Request):
+    editor_session_id = request.session.get("editor_session_id")
+    author_id = request.session.get("user_id")
+    author_id = UUID(author_id) if author_id is not None else None
+    article = tool_model.Article(editor_session_id=UUID(editor_session_id),
+                                 author_id=author_id)
+    session = next(get_session())
+    session.add(article)
+    session.commit()
+    request.session['article_id'] = str(article.id)
+    return article
+
+
+def store_article_data(request: Request, 
+                       article_data: ArticleHead):
+    session = next(get_session())
+    # article = session.get(tool_model.Article,
+                        #   UUID(request.session.get("article_id")))
+    article = get_article(request, UUID(request.session.get("browser_id")))
+    user_id = request.session.get("user_id")
+    article.author_id = UUID(user_id) if user_id is not None else None
+    title = None
+    subtitle = None
+    for block in article_data.blocks:
+        if block.type == 'title':
+            title = block.data.text
+        elif block.type == 'subtitle':
+            subtitle = block.data.text
+
+    article.title = title
+    article.subtitle = subtitle
+    article.last_updated_at = datetime.fromtimestamp(article_data.time / 1000)
+    session.add(article)
+    session.commit()
+    session.expunge(article)
+    return article
+
+
+''' 
+this function is for getting the data of article head
+from the database and then sending it to the frontend.
+'''
+def load_article_head_data(request: Request, 
+                           browser_id: Annotated[UUID| None, Cookie()] = None
+                           ) -> ArticleHeadPublic:
+    article = get_article(browser_id)
+    
+    article_pub = ArticleHeadPublic()
+    title_block = TitleBlockPub(data=TitleHeaderDataPub(
+        text=article.title
+    ))
+    subtitle_block = SubtitleBlockPub(data=SubtitleHeaderDataPub(
+        text=article.subtitle
+    ))
+    article_pub.blocks = (title_block, subtitle_block)
+    return article_pub
+    
+
+
+''' 
+orchestrating the sessions.
 '''
 def editor_session_orchestrator(request: Request,
                                 response: Response,
@@ -88,7 +211,7 @@ def get_curr_article_or_make_new(request: Request,
     ''' 
         This should get the last article which was present on the editor.
     '''
-    user_id = request.session.get("user_id")
+    user_id = UUID(request.session.get("user_id"))
     session = next(get_session())
     if user_id:
         curr_user = session.exec(
@@ -283,7 +406,7 @@ def user_logout(request: Request,
                 response: Response,
                 browser_id: Annotated[UUID | None, Cookie()] = None) -> bool:
     session = next(get_session())
-    user_id = request.session.get("user_id")
+    user_id = UUID(request.session.get("user_id"))
 
     editor_session = get_editor_session(request, response, browser_id) if browser_id is not None else None 
     if editor_session:

@@ -23,23 +23,53 @@ async function post_data(data, url){
     }
 }
 
+async function get_current_article_id(){
+    try {
+        const response = await fetch(
+            "http://127.0.0.1:8000/article/id", {method: "GET"}
+        );
+
+        if (!response.ok){
+            console.log(response.status) ;
+        } else {
+            const data = await response.json() ;
+            return data.article_id ;
+        }
+    } catch (err) {
+        console.log(err) ;
+    }
+}
+
 const saveBtn = document.getElementById("save-btn") ;
 saveBtn.addEventListener("click", async () => {
-    editor.save().then((outputData) => {
+    editor.save().then(async (outputData) => {
         console.log("output data:")
+
+        const article_id = await get_current_article_id();
 
         // below values should be replaced according to the user session data
         outputData.logged_in_session_id = "abcdf" ;
         outputData.browser_session_id = "dbshfg" ;
-        outputData.article_id = "fc03e17b460545beafd1b0c0bc8747c4" ;
+        outputData.article_id = article_id ;
         console.log(JSON.stringify(outputData));
         console.log("hello") ;
-        post_data(outputData, "http://127.0.0.1:8000/editorjs");
+        post_data(outputData, "http://127.0.0.1:8000/editorjs/save/article/body");
     }).catch((err) => {
         console.log(err);
     }) ;
 }); 
 
+const saveArtBtn = document.getElementById("save-article-head") ;
+saveArtBtn.addEventListener("click", async () => {
+    articleInfoEditor.save().then(async (outputData) => {
+        const article_id = await get_current_article_id()
+        outputData.article_id = article_id ;
+        console.log(JSON.stringify(outputData)) ;
+        post_data(outputData, "http://127.0.0.1:8000/editorjs/save/article/head") ;
+    }).catch((err) => {
+        console.log(err) ;
+    }) ;
+}) ;
 
 const testBtn = document.getElementById("test-btn");
 testBtn.addEventListener("click", () => {
@@ -62,3 +92,49 @@ articleDataContainer.addEventListener("keydown", (e) => {
         e.stopPropagation();
     }
 }, true) ;
+
+async function get_article_head_data(){
+    url = "http://127.0.0.1/load/article/head/previous_state" ;
+
+    const response = await fetch(
+        url,
+        {
+            method: "GET"
+        }
+    ) ;
+
+    if (!response.ok){
+        console.log(response.status)
+    } else {
+        const responseData = await response.json() ;
+        return responseData ;
+    }
+}
+
+async function get_article_body_data() {
+    url = "http://127.0.0.1/load/article/body/previous_state" ;
+
+    const response = await fetch(
+        url,
+        {
+            method: "GET"
+        }
+    ) ;
+
+    if (!response.ok){
+        console.log(response.status)
+    } else {
+        const responseData = await response.json() ;
+        return responseData ;
+    }
+}
+
+async function populate_previous_state(){
+    const article_head = await get_article_head_data() ;
+    const article_body = await get_article_body_data() ;
+
+    articleInfoEditor.data = article_head ;
+    editor.data = article_body ;
+}
+
+populate_previous_state() ;
