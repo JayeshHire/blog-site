@@ -179,7 +179,8 @@ from the database and then sending it to the frontend.
 def load_article_head_data(request: Request, 
                            browser_id: Annotated[UUID| None, Cookie()] = None
                            ) -> ArticleHeadPublic:
-    article = get_article(browser_id)
+    article = get_article(request, browser_id)
+    print(article)
     
     article_pub = ArticleHeadPublic()
     title_block = TitleBlockPub(data=TitleHeaderDataPub(
@@ -191,6 +192,14 @@ def load_article_head_data(request: Request,
     article_pub.blocks = (title_block, subtitle_block)
     return article_pub
     
+
+''' 
+this function is for fetching the previous saved
+data for the article body from the database.
+'''
+def load_article_body_data(request: Request,
+                           browser_id: Annotated[UUID | None, Cookie()]):
+    pass 
 
 
 ''' 

@@ -37,13 +37,31 @@ class Block(BaseModel):
     sequence: int | None = None 
     data: TableData | CodeToolData | ParagraphData | HeaderData | QuoteData | ListData
 
+class BlockPub(BaseModel):
+    '''
+    This is a public block which will be sent
+    to the frontend through EditorJSSessionDataPub
+    '''
+    id: str 
+    type: str 
+    data: TableData | CodeToolData | ParagraphData | HeaderData | QuoteData | ListData
+
 class EditorJSSessionData(BaseModel):
     time: int
     blocks: List[Block]
     version: str
-    logged_in_session_id: str
-    browser_session_id: str
+    # logged_in_session_id: str
+    # browser_session_id: str
     article_id: str
+
+class EditorJSSessionDataPub(BaseModel):
+    ''' 
+    This model contains data which will be sent 
+    to the frontend editorjs window.
+    '''
+    time: int
+    blocks: List[BlockPub]
+    version: str
 
 class HeadBlock(BaseModel):
     id: str 
@@ -57,11 +75,11 @@ class ArticleHead(BaseModel):
     article_id: str
 
 class TitleHeaderDataPub(BaseModel):
-    text: str 
+    text: str | None
     level: int = Field(default=1, frozen=True)
 
 class SubtitleHeaderDataPub(BaseModel):
-    text: str 
+    text: str | None
     level: int = Field(default=3, frozen=True)
 
 class TitleBlockPub(BaseModel):

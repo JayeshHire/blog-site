@@ -10,7 +10,7 @@ from database import get_session, init_db_setup
 from sqlmodel import Session, select
 from editorjs_basemodel import *
 from dependencies.editorjs_data_store import store_editorjs_data
-from dependencies.session_depends import user_login, user_logout, user_signup, init_editor_session, store_article_data
+from dependencies.session_depends import user_login, user_logout, user_signup, init_editor_session, store_article_data, load_article_head_data, load_article_body_data
 from user_basemodel import SigninBaseModel, SignupBaseModel
 from model.user_model import UserCreate, UserPublic, User
 from passlib.context import CryptContext
@@ -153,5 +153,12 @@ async def has_logged_in(request: Request):
 # methods for populating the earlier states 
 # of the browser window
 @app.get("/load/article/head/previous_state")
-async def load_article_head(browser_id: Annotated[UUID | None, Cookie()]):
-    
+async def load_article_head(article_head_pub: Annotated[ArticleHeadPublic | None, Depends(load_article_head_data)]
+                            ) -> ArticleHeadPublic:
+    return article_head_pub
+
+
+@app.get("/load/article/body/previous_state")
+async def load_article_body(article_body_pub: Annotated[EditorJSSessionDataPub | None, Depends(load_article_body_data)]
+                            ) -> EditorJSSessionDataPub:
+    return article_body_pub

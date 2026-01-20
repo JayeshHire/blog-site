@@ -48,8 +48,8 @@ saveBtn.addEventListener("click", async () => {
         const article_id = await get_current_article_id();
 
         // below values should be replaced according to the user session data
-        outputData.logged_in_session_id = "abcdf" ;
-        outputData.browser_session_id = "dbshfg" ;
+        // outputData.logged_in_session_id = "abcdf" ;
+        // outputData.browser_session_id = "dbshfg" ;
         outputData.article_id = article_id ;
         console.log(JSON.stringify(outputData));
         console.log("hello") ;
@@ -94,38 +94,47 @@ articleDataContainer.addEventListener("keydown", (e) => {
 }, true) ;
 
 async function get_article_head_data(){
-    url = "http://127.0.0.1/load/article/head/previous_state" ;
+    const url = "http://127.0.0.1:8000/load/article/head/previous_state" ;
 
-    const response = await fetch(
-        url,
-        {
-            method: "GET"
+    try {
+        const response = await fetch(
+            url,
+            {
+                method: "GET"
+            }
+        ) ;
+
+        if (!response.ok){
+            console.log(response.status)
+        } else {
+            const responseData = await response.json() ;
+            return responseData ;
         }
-    ) ;
-
-    if (!response.ok){
-        console.log(response.status)
-    } else {
-        const responseData = await response.json() ;
-        return responseData ;
+    } catch (err) {
+        console.log(err) ;
     }
+    
 }
 
 async function get_article_body_data() {
-    url = "http://127.0.0.1/load/article/body/previous_state" ;
+    const url = "http://127.0.0.1:8000/load/article/body/previous_state" ;
 
-    const response = await fetch(
-        url,
-        {
-            method: "GET"
+    try {
+        const response = await fetch(
+            url,
+            {
+                method: "GET"
+            }
+        ) ;
+
+        if (!response.ok){
+            console.log(response.status)
+        } else {
+            const responseData = await response.json() ;
+            return responseData ;
         }
-    ) ;
-
-    if (!response.ok){
-        console.log(response.status)
-    } else {
-        const responseData = await response.json() ;
-        return responseData ;
+    } catch (err) {
+        console.log(err) ;
     }
 }
 
@@ -133,8 +142,36 @@ async function populate_previous_state(){
     const article_head = await get_article_head_data() ;
     const article_body = await get_article_body_data() ;
 
-    articleInfoEditor.data = article_head ;
-    editor.data = article_body ;
+    if (article_head) {
+        articleInfoEditor.isReady.then(() => {
+            console.log(article_head) ;
+            articleInfoEditor.render(article_head).then(() => {
+                console.log("data saved successfully");
+            })
+            .catch((err) => {
+                console.log(err) ;
+            });
+        }).catch(err => {
+            console.log("initialization failed") ;
+        }) ;
+    }
+
+    if (article_body) {
+        editor.isReady.then(() => {
+            console.log(article_body) ;
+            editor.render(article_body).then(() => {
+                console.log("populated the data successfully") ;
+            }).catch((err) => {
+                console.log(err) ;
+            }) ;
+        }).catch((err) => {
+            console.log("editor not ready error") ;
+            console.log(err) ;
+        }) ;
+    }
+    
 }
 
-populate_previous_state() ;
+populate_previous_state().then(() => {
+    console.log("data has been populated");
+}) ;
