@@ -6,13 +6,15 @@ from typing import Optional, List, Tuple
 from collections import namedtuple
 from database import get_session
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
-
+from datetime import datetime
 
 # AddToolOutput = namedtuple("AddToolOutputType", [""])
 
 def add_tool_md(session: Session,
                 block: Block,
-                article_id: uuid.UUID
+                article_id: uuid.UUID,
+                time: datetime,
+                version: str 
                 ) -> Tuple[
                     Session, tool_model.ToolMD
                 ]:
@@ -24,7 +26,9 @@ def add_tool_md(session: Session,
         sequence= block.sequence,
         article_id= article_id,
         block_id= block.id,
-        tool_id= tool_id
+        tool_id= tool_id,
+        time= time,
+        version=version
     )
     session.add(tool_md)
     print(f"created tool: {tool_md}")
@@ -708,6 +712,15 @@ def update_tool_md_seq(session: Session, tool_md_id: uuid.UUID, seq: int):
     session.add(tool_md)
     return session
 
+def update_tool_md_time_n_ver(session: Session, 
+                            tool_md_id: uuid.UUID, 
+                            time: datetime, version: str):
+    tool_md = session.get(tool_model.ToolMD, tool_md_id)
+    tool_md.time = time 
+    tool_md.version = version
+    session.add(tool_md)
+    return session
+
 
 func_map = {
         "table": add_table_tool_data,
@@ -788,6 +801,8 @@ def store_editorjs_data(editorjs_data: EditorJSSessionData) :
         3. delete the block ids from the table with same sequence 
         where the block id is not equal to the one in the blocks
     '''
+    time = datetime.fromtimestamp(editorjs_data.time / 1000)
+    version = editorjs_data.version
     blocks = editorjs_data.blocks
     tool_md_exists = [ get_toolmd_ifexists(block.id) for block in blocks]
     article_id = uuid.UUID(editorjs_data.article_id)
@@ -803,6 +818,7 @@ def store_editorjs_data(editorjs_data: EditorJSSessionData) :
             # tool_md.sequence = block.sequence
             # session.add(tool_md)
             update_tool_md_seq(session, tool_md.id, block.sequence)
+            update_tool_md_time_n_ver(session, tool_md.id, time, version)
             s, tool_data_mdl = func(session, block, tool_md)
         else:
             # add new data
@@ -811,7 +827,7 @@ def store_editorjs_data(editorjs_data: EditorJSSessionData) :
             tool_type = block.type
             func = func_map[tool_type]
             session = next(get_session())
-            s, tool_md = add_tool_md(session, block, article_id)
+            s, tool_md = add_tool_md(session, block, article_id, time, version)
             print(f"tool md data: {tool_md}")
             s, tool_data_mdl = func(s, block, tool_md.id)
     

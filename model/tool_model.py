@@ -43,6 +43,11 @@ class ToolMD(SQLModel, table=True): # Tool Meta Data
     id: uuid.UUID | None = Field(default_factory= uuid.uuid4, primary_key=True)
     sequence: int 
     block_id: str 
+    
+    # this two fields data should be
+    # added by the db population functions.
+    time: datetime
+    version: str 
 
     article_id: uuid.UUID | None = Field(default=None, foreign_key="article.id")
     article: Article | None = Relationship(back_populates="tool_mds")
