@@ -138,6 +138,25 @@ async function get_article_body_data() {
     }
 }
 
+const sanitizeItems = (itemObj) => {
+    if (itemObj === null) {
+        itemObj = [] ;
+    } else {
+        for (let i = 0; i < itemObj.length; i++){
+            sanitizeItems(itemObj[i].items) ;
+        }
+    }
+}
+
+const sanitizeArticleBodyData = (obj) => {
+
+    for(let i = 0; i < obj.blocks.length; i++){
+        if (obj.blocks[i].type == "list"){
+            sanitizeItems(obj.blocks[i].data.items) ;
+        }
+    }
+};
+
 async function populate_previous_state(){
     const article_head = await get_article_head_data() ;
     const article_body = await get_article_body_data() ;
@@ -157,8 +176,14 @@ async function populate_previous_state(){
     }
 
     if (article_body) {
+        const cleanListItem = sanitizeArticleBodyData(article_body);
+
         editor.isReady.then(() => {
             console.log(article_body) ;
+            // article_body.blocks[0].data
+            // .items[0].items[0].items = [] ;
+            // article_body.blocks[0].data
+            // .items[0].items[1].items = [] ;
             editor.render(article_body).then(() => {
                 console.log("populated the data successfully") ;
             }).catch((err) => {

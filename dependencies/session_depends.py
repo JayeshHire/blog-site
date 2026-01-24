@@ -1,15 +1,15 @@
 from fastapi import Response, Request, Cookie, Form, HTTPException, status
-from model import tool_model, user_model
+from model import tool_model, user_model, code_tool_model, list_tool_models, quote_tool_model, table_tool_model, header_tool_model, paragraph_tool_model
 from database import get_session
 from uuid import UUID
 from typing import Annotated
-from sqlmodel import select
+from sqlmodel import select, Session
 from pydantic import ValidationError
 from sqlalchemy import or_
 from sqlalchemy.exc import NoResultFound, IntegrityError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from user_basemodel import SigninBaseModel, SignupBaseModel
-from editorjs_basemodel import ArticleHead, ArticleHeadPublic, TitleBlockPub, SubtitleBlockPub, TitleHeaderDataPub, SubtitleHeaderDataPub
+from editorjs_basemodel import *
 from passlib.context import CryptContext
 
 
@@ -29,20 +29,21 @@ def create_editor_session(request: Request, response: Response ) -> tool_model.E
     session.add(editor_session)
     article = tool_model.Article(editor_session_id=editor_session.id)
     session.add(article)
-    session.commit()
     # response.set_cookie(
     #     key="editor_session_id",
     #     value=editor_session.id
     # )
     response.set_cookie(
         key="browser_id",
-        value=str(editor_session.browser_id)
+        value=str(editor_session.browser_id),
+        expires=editor_session.expiry_date.astimezone(timezone.utc)
     )
     # whenever we will need to fetch the data for 
     # previous application state. We'll fetch it through 
     # the browser_id key stored as a cookie on the browser.
     request.session["editor_session_id"] = str(editor_session.id) 
     request.session["browser_id"] = str(editor_session.browser_id)
+    session.commit()
     session.expunge(editor_session)
     return editor_session
 
@@ -124,6 +125,7 @@ def get_article(request: Request,
     article = session.exec(
         select(tool_model.Article)
         .where(tool_model.Article.editor_session_id == editor_session_id)
+        .where(tool_model.EditorSession.browser_id == browser_id)
         .order_by(tool_model.Article.last_updated_at.desc())
     ).first()
     request.session['article_id'] = str(article.id)
@@ -193,13 +195,163 @@ def load_article_head_data(request: Request,
     return article_pub
     
 
+def populate_table_data(session: Session, 
+                        tool_md_id: UUID) -> TableData:
+    table_tool = session.exec(
+        select(table_tool_model.TableTool)
+        .where(table_tool_model.TableTool.tool_md_id == tool_md_id)
+    ).one()
+    table_data = TableData.model_validate(table_tool)
+    return table_data 
+
+def populate_codetool_data(session: Session, 
+                        tool_md_id: UUID) -> CodeToolData:
+    code_tool = session.exec(
+        select(code_tool_model.CodeTool)
+        .where(code_tool_model.CodeTool.tool_md_id == tool_md_id)
+    ).one()
+    code_data = CodeToolData.model_validate(code_tool)
+    return code_data
+
+def populate_paragraph_data(session: Session, 
+                        tool_md_id: UUID) -> ParagraphData:
+    paragraph_tool = session.exec(
+        select(paragraph_tool_model.ParagraphTool)
+        .where(paragraph_tool_model.ParagraphTool.tool_md_id == tool_md_id)
+    ).one()
+    paragraph_data = ParagraphData.model_validate(paragraph_tool) 
+    return paragraph_data
+
+def populate_header_data(session: Session, 
+                        tool_md_id: UUID) -> HeaderData:
+    header_tool = session.exec(
+        select(header_tool_model.HeaderTool)
+        .where(header_tool_model.HeaderTool.tool_md_id == tool_md_id)
+    ).one()
+    header_data = HeaderData.model_validate(header_tool) 
+    return header_data
+
+def populate_quote_data(session: Session, 
+                        tool_md_id: UUID) -> QuoteData:
+    quote_tool = session.exec(
+        select(quote_tool_model.QuoteTool)
+        .where(quote_tool_model.QuoteTool.tool_md_id == tool_md_id)
+    ).one()
+    quote_data = QuoteData.model_validate(quote_tool) 
+    return quote_data
+
+def populate_list_item(session: Session,
+                       list_item: ListItem,
+                       parent_item_id: UUID,
+                       lttbl_id: UUID):
+    list_items_db = session.exec(
+        select(list_tool_models.Item)
+        # .where(list_tool_models.Item.lttbl_id == lttbl_id)
+        .where(list_tool_models.Item.parent_item_id == parent_item_id)
+        .order_by(list_tool_models.Item.sequence)
+    ).all()
+    print(f"parent_item: {list_item}")
+    if list_items_db == []:
+        return 
+    list_item_bmodel: List[ListItem] = []
+    for item in list_items_db:
+        parent_item_id = item.id
+        if parent_item_id is None:
+            continue
+        tmp_list_item = ListItem(content=item.content, meta=item.meta, items=[])
+        populate_list_item(session, 
+                           list_item, 
+                           parent_item_id,
+                           lttbl_id)
+        list_item_bmodel.append(tmp_list_item)
+    list_item.items = list_item_bmodel
+
+def populate_list_data(session: Session, 
+                        tool_md_id: UUID) -> ListData:
+    list_tool = session.exec(
+        select(list_tool_models.ListToolTbl)
+        .where(list_tool_models.ListToolTbl.tool_md_id == tool_md_id)
+    ).one() 
+    list_items_db = session.exec(
+        select(list_tool_models.Item)
+        .where(list_tool_models.Item.lttbl_id == list_tool.id)
+        .where(list_tool_models.Item.parent_item_id == None)
+        .order_by(list_tool_models.Item.sequence)
+    ).all()
+
+    list_items: List[ListItem] = []
+    for list_item_db in list_items_db:
+        parent_item_id = list_item_db.id 
+        list_item = ListItem(content=list_item_db.content, meta=list_item_db.meta, items=[])
+        populate_list_item(session, list_item, parent_item_id, list_tool.id)
+        list_items.append(list_item)
+
+    print(list_items)
+    list_data = ListData(style=list_tool.style, 
+                         meta=list_tool.meta,
+                         items=list_items
+                        )
+    return list_data
+
+
+population_funcs = {
+    "table": populate_table_data,
+    "code": populate_codetool_data,
+    "paragraph": populate_paragraph_data,
+    "header": populate_header_data,
+    "quote": populate_quote_data,
+    "list": populate_list_data
+}
+
+
+''' 
+populating data from the db tables in the
+EditorJSSessionData object.
+'''
+def populate_editorjs_session(article_id: UUID) -> EditorJSSessionData:
+    session = next(get_session())
+    tool_mds = session.exec(
+        select(tool_model.ToolMD)
+        .where(tool_model.ToolMD.article_id == article_id)
+        .order_by(tool_model.ToolMD.sequence)
+    ).all()
+    if tool_mds == []:
+        return EditorJSSessionDataPub(
+            time=int(datetime.now().timestamp()),
+            blocks=[],
+            version="0.0"
+        )
+    time = tool_mds[0].time
+    version = tool_mds[0].version
+    blocks = []
+    for tool_md in tool_mds:
+        populate_data_func = population_funcs.get(tool_md.tool.name, None)
+        data = populate_data_func(session, tool_md.id)
+        block = Block(
+            id = tool_md.block_id,
+            type= tool_md.tool.name,
+            sequence= tool_md.sequence,
+            data=data
+        )
+        blocks.append(block)
+
+    editorjs_session_data = EditorJSSessionData(time=int(time.timestamp()),
+                                                blocks=blocks,
+                                                version=version,
+                                                article_id=str(article_id)
+                                                )
+    return editorjs_session_data
+
 ''' 
 this function is for fetching the previous saved
 data for the article body from the database.
 '''
 def load_article_body_data(request: Request,
-                           browser_id: Annotated[UUID | None, Cookie()]):
-    pass 
+                           browser_id: Annotated[UUID | None, Cookie()]
+                           ) -> EditorJSSessionDataPub:
+    article = get_article(request, browser_id)
+    editorjs_session_data = populate_editorjs_session(article.id)
+    return EditorJSSessionDataPub.model_validate(editorjs_session_data)
 
 
 ''' 
