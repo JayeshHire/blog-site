@@ -8,3 +8,4 @@ testing.db
 test.logs
 test_log
 update_paragraph.log
+dist/

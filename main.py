@@ -28,7 +28,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-app.mount("/bundled-js", StaticFiles(directory="dist"), name="bundle")
+app.mount("/dist", StaticFiles(directory="dist"), name="bundle")
 
 app.add_middleware(SessionMiddleware, 
                    secret_key="#234Hdjiru85&8$hd^&!jdkf+=-09*HgY&8^4",
@@ -162,3 +162,17 @@ async def load_article_head(article_head_pub: Annotated[ArticleHeadPublic | None
 async def load_article_body(article_body_pub: Annotated[EditorJSSessionDataPub | None, Depends(load_article_body_data)]
                             ) -> EditorJSSessionDataPub:
     return article_body_pub
+
+
+""" 
+This returns the login status of the user.
+It tells the frontend application whether the user has logged in 
+or not.
+"""
+@app.get("/user/status/is_logged_in")
+async def is_user_logged_in(request: Request):
+    user_id = request.get("user_id")
+    if user_id:
+        return {"is_logged_in": True}
+    else:
+        return {"is_logged_in": False}

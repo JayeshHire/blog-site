@@ -197,6 +197,34 @@ async function populate_previous_state(){
     
 }
 
+// this function is called when the index page is loaded 
+// this function populates the earlier article data which 
+// was present in the editor.
 populate_previous_state().then(() => {
     console.log("data has been populated");
 }) ;
+
+
+/*
+Get the status of the user for the current browser session.
+The user can be logged in or logged out. Get that data for 
+the user.
+*/
+async function is_user_logged_in(){
+    const url = "/user/status/is_logged_in"
+    const response = await fetch(
+        url,
+        {
+            method: "GET"
+        } 
+    ) ;
+    const status = "";
+    if (!response.ok) {
+        console.log(response) ;
+    } else {
+        const status = await response.json() ;
+    }
+
+    return status.is_logged_in ;
+}
+

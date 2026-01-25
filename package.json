@@ -9,6 +9,8 @@
     "webpack-cli": "^6.0.1"
   },
   "scripts": {
-    "build": "webpack"
+    "build:editor": "webpack --env package=editor",
+    "build:basic": "webpack --env package=basic",
+    "build:all": "webpack --env package=editor,package=basic"
   }
 }
