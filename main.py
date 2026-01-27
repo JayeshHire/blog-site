@@ -79,7 +79,7 @@ async def get_curr_user(request: Request):
 
 @app.get("/profile")
 async def get_profile(request: Request):
-    user = request.session.get("user")
+    user = request.session.get("user_id")
     if user is None:
         return {"username": None, "message": "User not logged in"}
     return {"user": user}
@@ -171,8 +171,52 @@ or not.
 """
 @app.get("/user/status/is_logged_in")
 async def is_user_logged_in(request: Request):
-    user_id = request.get("user_id")
+    user_id = request.session.get("user_id")
     if user_id:
         return {"is_logged_in": True}
     else:
         return {"is_logged_in": False}
+    
+
+""" 
+These route handlers are for sending all the 
+markups directly to the frontend where the 
+frontend will populate these markups in other
+elements.
+"""
+@app.get("/markup/form/signin")
+def get_form_signin():
+    signin_form = ""
+    with open("./static/html/chunks/form_signin.html", 'r') as f:
+        signin_form += f.read() 
+    return {
+        "signin_form": signin_form
+    }
+
+@app.get("/markup/form/signup")
+def get_form_signin():
+    signup_form = ""
+    with open("./static/html/chunks/form_signup.html", 'r') as f:
+        signup_form += f.read() 
+    return {
+        "signup_form": signup_form
+    }
+
+@app.get("/markup/form/logout")
+def get_form_signin():
+    logout_form = ""
+    with open("./static/html/chunks/form_logout.html", 'r') as f:
+        logout_form += f.read() 
+    return {
+        "logout_form": logout_form
+    }
+
+@app.get("/dev/clear_session")
+def clear_session(request: Request, browser_id: Annotated[UUID | None, Cookie()]):
+    user_id = request.session.get("user_id")
+    # browser_id = request.session.get("browser_id")
+    # request.session.clear()
+    return {
+        "user_id": user_id,
+        "browser_id": browser_id
+    }

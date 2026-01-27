@@ -33,6 +33,7 @@ def create_editor_session(request: Request, response: Response ) -> tool_model.E
     #     key="editor_session_id",
     #     value=editor_session.id
     # )
+    session.commit()
     response.set_cookie(
         key="browser_id",
         value=str(editor_session.browser_id),
@@ -43,7 +44,6 @@ def create_editor_session(request: Request, response: Response ) -> tool_model.E
     # the browser_id key stored as a cookie on the browser.
     request.session["editor_session_id"] = str(editor_session.id) 
     request.session["browser_id"] = str(editor_session.browser_id)
-    session.commit()
     session.expunge(editor_session)
     return editor_session
 
@@ -62,17 +62,21 @@ def get_editor_session(request: Request,
         session = next(get_session())
         user_id = request.session.get("user_id")
         user_id = UUID(user_id) if user_id is not None else None
+        print(f"user_id: {user_id}, browser_id: {browser_id}")
         editor_session = session.exec(
             select(tool_model.EditorSession)
             .where(tool_model.EditorSession.browser_id == browser_id)
             .where(tool_model.EditorSession.expiry_date > datetime.now())
             .where(tool_model.EditorSession.user_id == user_id)
         ).first()
+        print(f"editor session: {editor_session}")
         if editor_session is None:
-            return None 
-        elif editor_session.logged_in:
+            return None
+        else:
             session.expunge(editor_session)
-            request.session['editor_session_id'] = editor_session.id
+
+        if editor_session.logged_in:
+            request.session['editor_session_id'] = str(editor_session.id)
             return editor_session
         elif user_id is None:
             return editor_session
@@ -90,10 +94,13 @@ def init_editor_session(request: Request,
                         browser_id: Annotated[UUID | None, Cookie()] = None
                         ):
     if browser_id:
+        print(f"----- browser id: {browser_id}")
         editor_session = get_editor_session(request, browser_id)
         if editor_session is None:
+            print("editor session is none")
             editor_session = create_editor_session(request, response)
         session = next(get_session())
+        # session.add(editor_session)
         try:
             article = session.exec(
                 select(tool_model.Article)
@@ -448,7 +455,7 @@ def user_login(request: Request,
     if browser_id is None:
         editor_session = create_editor_session(request, response)
     else:
-        editor_session = get_editor_session(request, response, browser_id)
+        editor_session = get_editor_session(request, browser_id)
         # if the editor session has expired, create a new session
         if editor_session is None:
             editor_session = create_editor_session(request, response)
@@ -551,7 +558,7 @@ def user_signup(request: Request,
     if browser_id is None:
         editor_session = create_editor_session(request, response)
     else: 
-        editor_session = get_editor_session(request, response, browser_id)
+        editor_session = get_editor_session(request, browser_id)
         if editor_session is None:
             editor_session = create_editor_session(request, response)
     editor_session.user_id = new_user.id
@@ -569,13 +576,13 @@ def user_logout(request: Request,
     session = next(get_session())
     user_id = UUID(request.session.get("user_id"))
 
-    editor_session = get_editor_session(request, response, browser_id) if browser_id is not None else None 
+    editor_session = get_editor_session(request, browser_id) if browser_id is not None else None 
     if editor_session:
         editor_session.logged_in = False
         session.add(editor_session)
 
     if user_id:
-        user = session.get(user_model.User, UUID(user_id))
+        user = session.get(user_model.User, user_id)
         if user is None:
             # this is a big error in the system.
             # application should crash in development here if this occurs
@@ -587,7 +594,11 @@ def user_logout(request: Request,
         user.last_login = datetime.now()
         session.add(user)
     session.commit()
-    return True 
+    # We are giving here browser id as
+    # None because we want it to create a new 
+    # editor session, browser_id and article.
+    res = init_editor_session(request, response, browser_id=None)
+    return res 
 
 
 
