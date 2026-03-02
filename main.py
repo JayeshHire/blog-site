@@ -18,6 +18,7 @@ from sqlmodel import or_
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from model.tool_model import Article
 from uuid import UUID
+from TelemetryConfig.telemetry_config import tracer, trace
 
 @asynccontextmanager
 async def lifespan( app: FastAPI):

@@ -11,6 +11,8 @@ from datetime import datetime, timedelta, timezone
 from user_basemodel import SigninBaseModel, SignupBaseModel
 from editorjs_basemodel import *
 from passlib.context import CryptContext
+from TelemetryConfig.telemetry_config import tracer, trace
+from opentelemetry.trace import Status, StatusCode
 
 
 
@@ -79,6 +81,9 @@ def get_editor_session(request: Request,
             request.session['editor_session_id'] = str(editor_session.id)
             return editor_session
         elif user_id is None:
+            print("inside get_editor_session func")
+            print(f"editor session: {editor_session.id}")
+            request.session['editor_session_id'] = str(editor_session.id)
             return editor_session
         else: 
             return None
@@ -112,6 +117,7 @@ def init_editor_session(request: Request,
     else:
         editor_session = create_editor_session(request, response)
         article = create_new_article(request)
+    
     return True # session info tup
 
 
@@ -127,16 +133,27 @@ def get_article(request: Request,
     one does not exists and an article is associated with the
     editor session.
     '''
-    editor_session_id = UUID(request.session.get("editor_session_id"))
+    print(f"Entering get_article: ")
+    # print(f"editor_session_id: {request.session.get("editor_session_id")}")
+    # editor_session_id = UUID(request.session.get("editor_session_id"))
+    
+    # editor_session_id = None if editor_session_id is None else UUID(editor_session_id)
+    print("browser_id: ", browser_id )
     session = next(get_session())
+    editor_session_id = session.exec(
+        select(tool_model.EditorSession)
+        .where(tool_model.EditorSession.browser_id == browser_id)
+        .order_by(tool_model.EditorSession.created_at.desc())
+    ).first().id
     article = session.exec(
         select(tool_model.Article)
         .where(tool_model.Article.editor_session_id == editor_session_id)
         .where(tool_model.EditorSession.browser_id == browser_id)
         .order_by(tool_model.Article.last_updated_at.desc())
     ).first()
-    request.session['article_id'] = str(article.id)
-    session.expunge(article)
+    request.session['article_id'] = str(article.id) #if article is not None else None
+    if article is not None:
+        session.expunge(article)
     return article
 
 
@@ -157,11 +174,12 @@ def create_new_article(request: Request):
 
 
 def store_article_data(request: Request, 
-                       article_data: ArticleHead):
+                       article_data: ArticleHead,
+                       browser_id: Annotated[UUID | None, Cookie()] = None):
     session = next(get_session())
     # article = session.get(tool_model.Article,
                         #   UUID(request.session.get("article_id")))
-    article = get_article(request, UUID(request.session.get("browser_id")))
+    article = get_article(request, browser_id)
     user_id = request.session.get("user_id")
     article.author_id = UUID(user_id) if user_id is not None else None
     title = None
@@ -186,8 +204,10 @@ this function is for getting the data of article head
 from the database and then sending it to the frontend.
 '''
 def load_article_head_data(request: Request, 
-                           browser_id: Annotated[UUID| None, Cookie()] = None
+                           browser_id: Annotated[UUID| None, Cookie()] 
                            ) -> ArticleHeadPublic:
+    print("inside load_article_head_data")
+    print(f"browser_id: {browser_id}")
     article = get_article(request, browser_id)
     print(article)
     
@@ -444,7 +464,10 @@ def verify_password(password: str, hashed_password: str)->bool:
 
 '''
 Following functions will do the login for a user.
+
+Adding the tracing by creating a span on the function
 '''
+@tracer.start_as_current_span("user_login")
 def user_login(request: Request, 
                response: Response, 
                user: Annotated[SigninBaseModel, Form()], 
@@ -452,6 +475,9 @@ def user_login(request: Request,
     ''' 
     This function will login an already existing user.
     '''
+    current_span = trace.get_current_span()
+    current_span.set_attribute("browser_id", browser_id)
+    current_span.set_attribute("function", "user_login")
     if browser_id is None:
         editor_session = create_editor_session(request, response)
     else:
@@ -481,8 +507,11 @@ def user_login(request: Request,
             ).one()
         existing_user_pub = user_model.UserPublic.model_validate(existing_user)
     except NoResultFound:
-        raise HTTPException(status_code= status.HTTP_404_NOT_FOUND,
+        e = HTTPException(status_code= status.HTTP_404_NOT_FOUND,
                             detail="User not found")
+        current_span.set_status(Status(StatusCode.ERROR))
+        current_span.record_exception(e)
+        raise e
 
 
     # check if the password is correct with the hash present in the db
@@ -503,11 +532,15 @@ def user_login(request: Request,
         # print("Existing user")
         # print(existing_user)
     else:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+        e = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Password is incorrect")
+        current_span.set_status(Status(StatusCode.ERROR))
+        current_span.record_exception(e)
+        raise e 
     # pass 
     # print("hello world")
     # print(existing_user)
+    current_span.add_event("user has been logged in")
     return existing_user_pub
 
 
