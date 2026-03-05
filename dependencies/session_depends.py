@@ -25,7 +25,10 @@ and browser_id as the cookies.
 we will change the author id for the user from None to current username.
 - A batch job is necessary for clearing the articles which does not have a title, subtitle, and toolmds.
 '''
+@tracer.start_as_current_span("editor session creation")
 def create_editor_session(request: Request, response: Response ) -> tool_model.EditorSession:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("function", "create_editor_session")
     session = next(get_session())
     editor_session = tool_model.EditorSession(expiry_date=datetime.now()+timedelta(days=1))
     session.add(editor_session)
@@ -36,11 +39,15 @@ def create_editor_session(request: Request, response: Response ) -> tool_model.E
     #     value=editor_session.id
     # )
     session.commit()
+    current_span.add_event("editor session and article has been created")
     response.set_cookie(
         key="browser_id",
         value=str(editor_session.browser_id),
         expires=editor_session.expiry_date.astimezone(timezone.utc)
     )
+    current_span.add_event("cookie [browser_id] has been set for the browser")
+    current_span.set_attribute("browser_id", editor_session.browser_id)
+    current_span.set_attribute("editor_session_id", editor_session.id)
     # whenever we will need to fetch the data for 
     # previous application state. We'll fetch it through 
     # the browser_id key stored as a cookie on the browser.
@@ -58,24 +65,30 @@ get the session object using the browser_id from the browser.
     which is not expired.
 - return the session object. [article id is more important here.]
 '''
+@tracer.start_as_current_span("editor session fetch")
 def get_editor_session(request: Request, 
                        browser_id: UUID | None = None):
+    current_span = trace.get_current_span()
+    current_span.set_attribute("function", "get_editor_session")
+    current_span.set_attribute("browser_id", browser_id)
     if browser_id:
         session = next(get_session())
         user_id = request.session.get("user_id")
         user_id = UUID(user_id) if user_id is not None else None
-        print(f"user_id: {user_id}, browser_id: {browser_id}")
+        current_span.set_attribute("user_id", user_id)
         editor_session = session.exec(
             select(tool_model.EditorSession)
             .where(tool_model.EditorSession.browser_id == browser_id)
             .where(tool_model.EditorSession.expiry_date > datetime.now())
             .where(tool_model.EditorSession.user_id == user_id)
         ).first()
+        current_span.add_event("editor session has been fetched")
         print(f"editor session: {editor_session}")
         if editor_session is None:
             return None
         else:
             session.expunge(editor_session)
+            current_span.set_attribute("editor_session.id", editor_session.id)
 
         if editor_session.logged_in:
             request.session['editor_session_id'] = str(editor_session.id)
@@ -94,10 +107,13 @@ def get_editor_session(request: Request,
 ''' 
 initialize the editor session
 '''
+@tracer.start_as_current_span("editor session initialization")
 def init_editor_session(request: Request, 
                         response: Response,
                         browser_id: Annotated[UUID | None, Cookie()] = None
                         ):
+    current_span = trace.get_current_span()
+    current_span.set_attribute("browser_id", browser_id)
     if browser_id:
         print(f"----- browser id: {browser_id}")
         editor_session = get_editor_session(request, browser_id)
@@ -112,11 +128,16 @@ def init_editor_session(request: Request,
                 .where(tool_model.Article.editor_session_id == editor_session.id)
                 .order_by(tool_model.Article.last_updated_at.desc())
             ).first()
-        except NoResultFound:
+            current_span.set_attribute("article_id", article.id)
+        except NoResultFound as e:
+            current_span.record_exception(e)
             article = create_new_article(request)
+            current_span.set_attribute("article_id", article.id)
     else:
         editor_session = create_editor_session(request, response)
+        current_span.add_event("New editor session created")
         article = create_new_article(request)
+        current_span.add_event("New article created")
     
     return True # session info tup
 
@@ -124,6 +145,7 @@ def init_editor_session(request: Request,
 ''' 
 get the article for the current editor session.
 '''
+@tracer.start_as_current_span("article fetch")
 def get_article(request: Request,
                 browser_id: UUID | None = None
                 ):
@@ -133,24 +155,28 @@ def get_article(request: Request,
     one does not exists and an article is associated with the
     editor session.
     '''
+    current_span = trace.get_current_span()
     print(f"Entering get_article: ")
     # print(f"editor_session_id: {request.session.get("editor_session_id")}")
     # editor_session_id = UUID(request.session.get("editor_session_id"))
     
     # editor_session_id = None if editor_session_id is None else UUID(editor_session_id)
     print("browser_id: ", browser_id )
+    current_span.set_attribute("browser_id", browser_id)
     session = next(get_session())
     editor_session_id = session.exec(
         select(tool_model.EditorSession)
         .where(tool_model.EditorSession.browser_id == browser_id)
         .order_by(tool_model.EditorSession.created_at.desc())
     ).first().id
+    current_span.set_attribute("editor_session_id", editor_session_id)
     article = session.exec(
         select(tool_model.Article)
         .where(tool_model.Article.editor_session_id == editor_session_id)
         .where(tool_model.EditorSession.browser_id == browser_id)
         .order_by(tool_model.Article.last_updated_at.desc())
     ).first()
+    current_span.set_attribute("article_id", article.id)
     request.session['article_id'] = str(article.id) #if article is not None else None
     if article is not None:
         session.expunge(article)
@@ -160,27 +186,39 @@ def get_article(request: Request,
 '''
 
 '''
+@tracer.start_as_current_span("article creation")
 def create_new_article(request: Request):
+    current_span = trace.get_current_span()
     editor_session_id = request.session.get("editor_session_id")
+    current_span.set_attribute("editor_session_id", editor_session_id)
     author_id = request.session.get("user_id")
+    current_span.set_attribute("author_id", author_id)
     author_id = UUID(author_id) if author_id is not None else None
     article = tool_model.Article(editor_session_id=UUID(editor_session_id),
                                  author_id=author_id)
     session = next(get_session())
     session.add(article)
     session.commit()
+    current_span.add_event("New article has been created")
+    current_span.set_attribute("article_id", article.id)
     request.session['article_id'] = str(article.id)
+    current_span.add_event("added article_id to the session")
     return article
 
 
+@tracer.start_as_current_span("store article data")
 def store_article_data(request: Request, 
                        article_data: ArticleHead,
                        browser_id: Annotated[UUID | None, Cookie()] = None):
+    current_span = trace.get_current_span()
+    current_span.set_attribute("browser_id", browser_id)
     session = next(get_session())
     # article = session.get(tool_model.Article,
                         #   UUID(request.session.get("article_id")))
     article = get_article(request, browser_id)
+    current_span.set_attribute("article.id", article.id)
     user_id = request.session.get("user_id")
+    current_span.set_attribute("user.id", user_id)
     article.author_id = UUID(user_id) if user_id is not None else None
     title = None
     subtitle = None
@@ -195,6 +233,7 @@ def store_article_data(request: Request,
     article.last_updated_at = datetime.fromtimestamp(article_data.time / 1000)
     session.add(article)
     session.commit()
+    current_span.add_event("Article data has been stored inside the article")
     session.expunge(article)
     return article
 
@@ -203,12 +242,18 @@ def store_article_data(request: Request,
 this function is for getting the data of article head
 from the database and then sending it to the frontend.
 '''
+@tracer.start_as_current_span("load article head data", 
+                              attributes={"func_name": "load_article_head_data"})
 def load_article_head_data(request: Request, 
                            browser_id: Annotated[UUID| None, Cookie()] 
                            ) -> ArticleHeadPublic:
+    current_span = trace.get_current_span()
     print("inside load_article_head_data")
     print(f"browser_id: {browser_id}")
+    current_span.set_attribute("browser_id", browser_id)
     article = get_article(request, browser_id)
+    current_span.add_event("article has been fetched successfully")
+    current_span.set_attribute("article.id", article.id)
     print(article)
     
     article_pub = ArticleHeadPublic()
@@ -219,64 +264,97 @@ def load_article_head_data(request: Request,
         text=article.subtitle
     ))
     article_pub.blocks = (title_block, subtitle_block)
+    current_span.add_event("article data has been populated in ArticleHeadPublic BaseModel")
     return article_pub
     
 
+@tracer.start_as_current_span("populate table data")
 def populate_table_data(session: Session, 
                         tool_md_id: UUID) -> TableData:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("tool_md.id", tool_md_id)
     table_tool = session.exec(
         select(table_tool_model.TableTool)
         .where(table_tool_model.TableTool.tool_md_id == tool_md_id)
     ).one()
+    current_span.add_event("table_tool data fetched")
+    current_span.set_attribute("table_tool.id", table_tool.id)
     table_data = TableData.model_validate(table_tool)
     return table_data 
 
+@tracer.start_as_current_span("populate_codetool_data")
 def populate_codetool_data(session: Session, 
                         tool_md_id: UUID) -> CodeToolData:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("tool_md.id", tool_md_id)
+
     code_tool = session.exec(
         select(code_tool_model.CodeTool)
         .where(code_tool_model.CodeTool.tool_md_id == tool_md_id)
     ).one()
+    current_span.add_event("code tool data fetched")
+    current_span.set_attribute("code_tool.id", code_tool.id)
     code_data = CodeToolData.model_validate(code_tool)
     return code_data
 
+@tracer.start_as_current_span("populate_paragraph_data")
 def populate_paragraph_data(session: Session, 
                         tool_md_id: UUID) -> ParagraphData:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("tool_md.id", tool_md_id)
+
     paragraph_tool = session.exec(
         select(paragraph_tool_model.ParagraphTool)
         .where(paragraph_tool_model.ParagraphTool.tool_md_id == tool_md_id)
     ).one()
+    current_span.add_event("paragraph tool data fetched")
+    current_span.set_attribute("paragraph_tool.id", paragraph_tool.id)
     paragraph_data = ParagraphData.model_validate(paragraph_tool) 
     return paragraph_data
 
+@tracer.start_as_current_span("populate_header_data")
 def populate_header_data(session: Session, 
                         tool_md_id: UUID) -> HeaderData:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("tool_md.id", tool_md_id)
     header_tool = session.exec(
         select(header_tool_model.HeaderTool)
         .where(header_tool_model.HeaderTool.tool_md_id == tool_md_id)
     ).one()
+    current_span.add_event("header tool data fetched")
+    current_span.set_attribute("header_tool.id", header_tool.id)
     header_data = HeaderData.model_validate(header_tool) 
     return header_data
 
+@tracer.start_as_current_span("populate_quote_data")
 def populate_quote_data(session: Session, 
                         tool_md_id: UUID) -> QuoteData:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("tool_md.id", tool_md_id)
     quote_tool = session.exec(
         select(quote_tool_model.QuoteTool)
         .where(quote_tool_model.QuoteTool.tool_md_id == tool_md_id)
     ).one()
+    current_span.add_event("quote tool data fetched")
+    current_span.set_attribute("quote_tool.id", quote_tool.id)
     quote_data = QuoteData.model_validate(quote_tool) 
     return quote_data
 
+@tracer.start_as_current_span("populate_list_item")
 def populate_list_item(session: Session,
                        list_item: ListItem,
                        parent_item_id: UUID,
                        lttbl_id: UUID):
+    current_span = trace.get_current_span()
+    current_span.set_attribute("parent_id.id", parent_item_id)
+    current_span.set_attribute("list_tool_tbl.id", lttbl_id)
     list_items_db = session.exec(
         select(list_tool_models.Item)
         # .where(list_tool_models.Item.lttbl_id == lttbl_id)
         .where(list_tool_models.Item.parent_item_id == parent_item_id)
         .order_by(list_tool_models.Item.sequence)
     ).all()
+    current_span.add_event("list tool items from the db have been fetched")
     print(f"parent_item: {list_item}")
     if list_items_db == []:
         return 
@@ -293,12 +371,17 @@ def populate_list_item(session: Session,
         list_item_bmodel.append(tmp_list_item)
     list_item.items = list_item_bmodel
 
+
+@tracer.start_as_current_span("populate_list_data")
 def populate_list_data(session: Session, 
                         tool_md_id: UUID) -> ListData:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("tool_md.id", tool_md_id)
     list_tool = session.exec(
         select(list_tool_models.ListToolTbl)
         .where(list_tool_models.ListToolTbl.tool_md_id == tool_md_id)
     ).one() 
+    current_span.add_event("list tool tbl for tool_md has been fetched")
     list_items_db = session.exec(
         select(list_tool_models.Item)
         .where(list_tool_models.Item.lttbl_id == list_tool.id)
@@ -335,13 +418,17 @@ population_funcs = {
 populating data from the db tables in the
 EditorJSSessionData object.
 '''
+@tracer.start_as_current_span("populate_editorjs_session")
 def populate_editorjs_session(article_id: UUID) -> EditorJSSessionData:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("article.id", article_id)
     session = next(get_session())
     tool_mds = session.exec(
         select(tool_model.ToolMD)
         .where(tool_model.ToolMD.article_id == article_id)
         .order_by(tool_model.ToolMD.sequence)
     ).all()
+    current_span.add_event("all the tool_mds have been fetched")
     if tool_mds == []:
         return EditorJSSessionDataPub(
             time=int(datetime.now().timestamp()),
@@ -354,6 +441,7 @@ def populate_editorjs_session(article_id: UUID) -> EditorJSSessionData:
     for tool_md in tool_mds:
         populate_data_func = population_funcs.get(tool_md.tool.name, None)
         data = populate_data_func(session, tool_md.id)
+        current_span.add_event("got the data for the tool_md from the tool_tbl")
         block = Block(
             id = tool_md.block_id,
             type= tool_md.tool.name,
@@ -373,9 +461,12 @@ def populate_editorjs_session(article_id: UUID) -> EditorJSSessionData:
 this function is for fetching the previous saved
 data for the article body from the database.
 '''
+@tracer.start_as_current_span("load_article_body_data")
 def load_article_body_data(request: Request,
                            browser_id: Annotated[UUID | None, Cookie()]
                            ) -> EditorJSSessionDataPub:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("browser_id", browser_id)
     article = get_article(request, browser_id)
     editorjs_session_data = populate_editorjs_session(article.id)
     return EditorJSSessionDataPub.model_validate(editorjs_session_data)
@@ -384,24 +475,32 @@ def load_article_body_data(request: Request,
 ''' 
 orchestrating the sessions.
 '''
+@tracer.start_as_current_span("editor_session_orchestrator")
 def editor_session_orchestrator(request: Request,
                                 response: Response,
                                 browser_id: Annotated[UUID | None, Cookie()] = None) -> tool_model.EditorSession:
+    current_span = trace.get_current_span()
+    current_span.set_attribute("browser_id", browser_id)
     editor_session = get_editor_session(request, response, browser_id=browser_id) 
     if editor_session is None:
         editor_session = create_editor_session(request, response)
         return editor_session
     return editor_session
 
+@tracer.start_as_current_span("get_curr_article_or_make_new")
 def get_curr_article_or_make_new(request: Request, 
                     response: Response,
                     browser_id: Annotated[UUID | None, Cookie()] = None):
     ''' 
         This should get the last article which was present on the editor.
     '''
+    current_span = trace.get_current_span()
+    current_span.set_attribute("browser_id", browser_id)
     user_id = UUID(request.session.get("user_id"))
     session = next(get_session())
     if user_id:
+        current_span.add_event("if block: user_id is not none. Processing records for logged in user")
+        current_span.set_attribute("user_id", user_id)
         curr_user = session.exec(
             select(user_model.User)
             .where(user_model.User.id == user_id)
@@ -421,16 +520,20 @@ def get_curr_article_or_make_new(request: Request,
         # if the editor session does not exists for that browser
         # create a new editor session with new article
         if editor_session is None:
+            current_span.add_event("if block: creating editor session as editor session does not exists")
             editor_session = create_editor_session(request, response)
             article = tool_model.Article(editor_session_id= editor_session.id)
             session.add(article)
             session.commit(article)
         else:
+            current_span.add_event("else block: editor session exists")
+            current_span.add_event("getting the article for the current session")
             article = session.exec(
                 select(tool_model.Article)
                 .where(tool_model.Article.editor_session_id == editor_session.id)
             )
     else: 
+        current_span.add_event("else block: user_id is None")
         editor_session = session.exec(
             select(tool_model.EditorSession)
             .where(tool_model.EditorSession.browser_id == browser_id)
@@ -438,11 +541,13 @@ def get_curr_article_or_make_new(request: Request,
         ).first()
 
         if editor_session is None:
+            current_span.add_event("if block: creating editor session as editor session does not exists")
             editor_session = create_editor_session(request, response)
             article = tool_model.Article(editor_session_id= editor_session.id)
             session.add(article)
             session.commit(article)
         else:
+            current_span.add_event("else block: editor session exists")
             article = session.exec(
                 select(tool_model.Article)
                 .where(tool_model.Article.editor_session_id == editor_session.id)
@@ -516,6 +621,7 @@ def user_login(request: Request,
 
     # check if the password is correct with the hash present in the db
     is_correct = verify_password(user.password, existing_user.hashed_password)
+    current_span.add_event("user entered password has been verified")
     if is_correct:
         request.session["user_id"] = str(existing_user.id)
         request.session["username"] = existing_user.username
@@ -544,6 +650,7 @@ def user_login(request: Request,
     return existing_user_pub
 
 
+@tracer.start_as_current_span("user_signup")
 def user_signup(request: Request,
                 response: Response,
                 user_create: Annotated[user_model.UserCreate, Form()] ,
@@ -552,7 +659,8 @@ def user_signup(request: Request,
     ''' 
     This function will register a new user and logs in the user.
     '''
-
+    current_span = trace.get_current_span()
+    current_span.set_attribute("browser_id", browser_id)
     # create a user.
     session = next(get_session())
     hashed_password = hash_password(user_create.password)
@@ -573,8 +681,10 @@ def user_signup(request: Request,
     try:
         session.add(new_user)
         # session.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         # session.rollback()
+        current_span.set_status(Status(StatusCode.ERROR))
+        current_span.record_exception(e)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="User with the same email or username already exists"
@@ -603,12 +713,15 @@ def user_signup(request: Request,
     return pub_user
 
 
+@tracer.start_as_current_span("user_logout")
 def user_logout(request: Request,
                 response: Response,
                 browser_id: Annotated[UUID | None, Cookie()] = None) -> bool:
     session = next(get_session())
+    current_span = trace.get_current_span()
+    current_span.set_attribute("browser_id", browser_id)
     user_id = UUID(request.session.get("user_id"))
-
+    current_span.set_attribute("user_id")
     editor_session = get_editor_session(request, browser_id) if browser_id is not None else None 
     if editor_session:
         editor_session.logged_in = False
@@ -631,6 +744,7 @@ def user_logout(request: Request,
     # None because we want it to create a new 
     # editor session, browser_id and article.
     res = init_editor_session(request, response, browser_id=None)
+    current_span.add_event("initialized the editor session after logout")
     return res 
 
 
