@@ -11,10 +11,10 @@ from datetime import datetime, timedelta, timezone
 from user_basemodel import SigninBaseModel, SignupBaseModel
 from editorjs_basemodel import *
 from passlib.context import CryptContext
-from TelemetryConfig.telemetry_config import tracer, trace
+from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
-
+tracer = trace.get_tracer(__name__)
 
 '''
 create a session object and set the session id 

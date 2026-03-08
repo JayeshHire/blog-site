@@ -19,6 +19,8 @@ from sqlalchemy.exc import NoResultFound, IntegrityError
 from model.tool_model import Article
 from uuid import UUID
 from TelemetryConfig.telemetry_config import tracer, trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
 
 @asynccontextmanager
 async def lifespan( app: FastAPI):
@@ -26,6 +28,8 @@ async def lifespan( app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+FastAPIInstrumentor.instrument_app(app)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 

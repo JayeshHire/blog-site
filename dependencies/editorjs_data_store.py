@@ -7,9 +7,15 @@ from collections import namedtuple
 from database import get_session
 from sqlalchemy.exc import NoResultFound, MultipleResultsFound
 from datetime import datetime
+from TelemetryConfig.telemetry_config import logger, origination_
+from opentelemetry import trace 
+from opentelemetry.trace import Status, StatusCode
 
 # AddToolOutput = namedtuple("AddToolOutputType", [""])
 
+tracer = trace.get_tracer(__name__)
+
+@tracer.start_as_current_span("add_tool_md")
 def add_tool_md(session: Session,
                 block: Block,
                 article_id: uuid.UUID,
@@ -18,6 +24,15 @@ def add_tool_md(session: Session,
                 ) -> Tuple[
                     Session, tool_model.ToolMD
                 ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="add_tool_md"
+    ))
+    current_span.set_attribute("article.id", str(article_id))
+    current_span.set_attribute("version", version)
+    current_span.set_attribute("time", str(time))
     tool_id = session.exec(
         select(tool_model.Tool)
         .where(tool_model.Tool.name == block.type)
@@ -31,10 +46,12 @@ def add_tool_md(session: Session,
         version=version
     )
     session.add(tool_md)
-    print(f"created tool: {tool_md}")
+    # print(f"created tool: {tool_md}")
+    logger.info(f"successfully created tool_md: {tool_md}")
     return (session, tool_md)
 
 # create individual functions for adding record to the db
+@tracer.start_as_current_span("add_code_tool_data")
 def add_code_tool_data(session: Session, 
                        block: Block, 
                        tool_md_id: uuid.UUID
@@ -42,6 +59,13 @@ def add_code_tool_data(session: Session,
                            Session,
                            tool_model.ToolDataModel
                            ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="add_code_tool_data"
+                                ))
+    current_span.set_attribute("tool_md_id", str(tool_md_id))
     if type(block.data) != CodeToolData:
         raise ValueError(f"object of CodeToolData class was expected but instead got {type(block.data)}")
     
@@ -52,9 +76,11 @@ def add_code_tool_data(session: Session,
     )
     session.add(ct_tbl)
     session.commit()
+    current_span.add_event("code_tool_data has been added into the db table")
     return (session, ct_tbl)
 
 
+@tracer.start_as_current_span("add_header_tool_data")
 def add_header_tool_data(session: Session, 
                        block: Block, 
                        tool_md_id: uuid.UUID
@@ -62,6 +88,13 @@ def add_header_tool_data(session: Session,
                            Session,
                            tool_model.ToolDataModel
                            ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="add_header_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
     if type(block.data) != HeaderData:
         raise ValueError(f"object of HeaderData class was expected but instead got {type(block.data)}")
     
@@ -72,9 +105,11 @@ def add_header_tool_data(session: Session,
     )
     session.add(ht_tbl)
     session.commit()
+    current_span.add_event("header tool data has been inserted into db")
     return (session, ht_tbl)
 
 
+@tracer.start_as_current_span("add_list_tool_data")
 def add_list_tool_data(session: Session, 
                        block: Block, 
                        tool_md_id: uuid.UUID
@@ -82,13 +117,23 @@ def add_list_tool_data(session: Session,
                            Session,
                            tool_model.ToolDataModel
                            ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="add_list_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
+    
     if type(block.data) != ListData:
         raise ValueError(f"object of ListData class was expected but instead got {type(block.data)}")
 
+    @tracer.start_as_current_span("store_items")
     def store_items(session: Session, 
                    item_list: List[ListItem],
                    lttbl_id: Optional[uuid.UUID],
                    parent_item_id: Optional[uuid.UUID]):
+        current_span = trace.get_current_span()
         for idx, item in enumerate(item_list):
             sequence = idx + 1
             item_tbl = list_tool_models.Item(
@@ -101,6 +146,7 @@ def add_list_tool_data(session: Session,
             session.add(item_tbl)
             if item.items != []:
                 store_items(session, item.items, None, item_tbl.id)
+        current_span.add_event("list items have been inserted in item tbl")
 
 
     lt_tbl = list_tool_models.ListToolTbl(
@@ -114,9 +160,11 @@ def add_list_tool_data(session: Session,
                 lt_tbl.id,
                 None)
     session.commit()
+    current_span.add_event("list tool data has been inserted in the list tool tbl")
     return (session, lt_tbl)
 
 
+@tracer.start_as_current_span("add_paragraph_tool_data")
 def add_paragraph_tool_data(session: Session, 
                        block: Block, 
                        tool_md_id: uuid.UUID
@@ -124,6 +172,14 @@ def add_paragraph_tool_data(session: Session,
                            Session,
                            tool_model.ToolDataModel
                            ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="add_paragraph_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
+
     if type(block.data) != ParagraphData:
         raise ValueError(f"object of ParagraphData class was expected but instead got {type(block.data)}")
     
@@ -137,9 +193,11 @@ def add_paragraph_tool_data(session: Session,
 
     session.add(p_tbl)
     session.commit()
+    current_span.add_event("paragraph tool data has been inserted into the paragraph tool tbl")
     return (session, p_tbl)
 
 
+@tracer.start_as_current_span("add_quote_tool_data")
 def add_quote_tool_data(session: Session, 
                        block: Block, 
                        tool_md_id: uuid.UUID
@@ -147,6 +205,13 @@ def add_quote_tool_data(session: Session,
                            Session,
                            tool_model.ToolDataModel
                            ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="add_quote_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
     if type(block.data) != QuoteData:
         raise ValueError(f"object of QuoteData class was expected but instead got {type(block.data)}")
     
@@ -158,9 +223,11 @@ def add_quote_tool_data(session: Session,
     )
     session.add(q_tbl)
     session.commit()
+    current_span.add_event("quote tool data has been inserted into the quote tool tbl")
     return (session, q_tbl)
 
 
+@tracer.start_as_current_span("add_table_tool_data")
 def add_table_tool_data(session: Session, 
                        block: Block, 
                        tool_md_id: uuid.UUID
@@ -168,6 +235,13 @@ def add_table_tool_data(session: Session,
                            Session,
                            tool_model.ToolDataModel
                            ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="add_table_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
     if type(block.data) != TableData:
         raise ValueError(f"object of TableData class was expected but instead got {type(block.data)}")
     
@@ -177,9 +251,11 @@ def add_table_tool_data(session: Session,
     )
     session.add(tt_tbl)
     session.commit()
+    current_span.add_event("table tool data has been inserted into the table_tool tbl")
     return (session, tt_tbl)
 
 
+@tracer.start_as_current_span("update_ToolMD")
 def update_ToolMD(session: Session, 
                           tool_md: tool_model.ToolMD,
                           tool_name: str,
@@ -187,6 +263,13 @@ def update_ToolMD(session: Session,
                               Session,
                               tool_model.ToolMD
                           ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="update_ToolMD"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md.id))
     new_tool_id = session.exec(
         select(tool_model.Tool)
         .where(tool_model.Tool.name == tool_name)
@@ -194,6 +277,7 @@ def update_ToolMD(session: Session,
     tool_md.tool_id = new_tool_id
     tool_md.block_id = block_id
     session.add(tool_md)
+    current_span.add_event("tool_md table has been updated in the db")
     return (session, tool_md)
 
 
@@ -210,6 +294,7 @@ here already available tool_md's id is given.
 if block.type is CodeToolData then call this func.
 '''
 # create individual functions for updating record in the db
+@tracer.start_as_current_span("update_code_tool_data")
 def update_code_tool_data(session: Session, 
                        block: Block, 
                        tool_md: tool_model.ToolMD
@@ -217,6 +302,13 @@ def update_code_tool_data(session: Session,
                            Session,
                            tool_model.ToolDataModel
                            ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="update_code_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md.id))
     if type(block.data) != CodeToolData:
         raise ValueError(f"object of CodeToolData class was expected but instead got {type(block.data)}")
     
@@ -256,9 +348,11 @@ def update_code_tool_data(session: Session,
                            tool_md_id= tool_md.id
                            )
 
+    current_span.add_event("code tool data has been updated in the code tool tbl")
     return (session, ct_tbl)
 
 
+@tracer.start_as_current_span("update_header_tool_data")
 def update_header_tool_data(session: Session, 
                        block: Block, 
                        tool_md: tool_model.ToolMD
@@ -266,6 +360,13 @@ def update_header_tool_data(session: Session,
                            Session,
                            tool_model.ToolDataModel
                            ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="update_header_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md.id))
     if type(block.data) != HeaderData:
         raise ValueError(f"object of HeaderData class was expected but instead got {type(block.data)}")
     
@@ -306,9 +407,11 @@ def update_header_tool_data(session: Session,
             tool_md_id= tool_md.id
         )
     
+    current_span.add_event("header tool data has been updated in the header tool tbl")
     return ( session, header_tool_inst)
 
 
+@tracer.start_as_current_span("update_list_tool_data")
 def update_list_tool_data(session: Session, 
                           block: Block, 
                           tool_md: tool_model.ToolMD
@@ -316,13 +419,22 @@ def update_list_tool_data(session: Session,
                             Session,
                           tool_model.ToolDataModel
                           ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="update_list_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md.id))
     if type(block.data) != ListData:
         raise ValueError(f"object of ListData class was expected but instead got {type(block.data)}")
     
+    @tracer.start_as_current_span("store_items[update]")
     def store_items(session: Session, 
                    item_list: List[ListItem],
                    lttbl_id: Optional[uuid.UUID],
                    parent_item_id: Optional[uuid.UUID]):
+        current_span = trace.get_current_span()
         for idx, item in enumerate(item_list):
             sequence = idx + 1
             item_tbl = list_tool_models.Item(
@@ -335,6 +447,7 @@ def update_list_tool_data(session: Session,
             session.add(item_tbl)
             if item.items != []:
                 store_items(session, item.items, None, item_tbl.id)
+        current_span.add_event("list items have been stored in the db")
 
     tool_name = tool_md.tool.name
     if tool_name == block.type:
@@ -373,9 +486,12 @@ def update_list_tool_data(session: Session,
                            block=block,
                            tool_md_id=tool_md.id
                         )
+    
+    current_span.add_event("list tool data has been updated in the list tool tbl")
     return (session, lt_tbl)
 
 
+@tracer.start_as_current_span("update_paragraph_tool_data")
 def update_paragraph_tool_data(session: Session,
                                block: Block, 
                           tool_md: tool_model.ToolMD
@@ -383,6 +499,13 @@ def update_paragraph_tool_data(session: Session,
                             Session,
                           tool_model.ToolDataModel
                           ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="update_paragraph_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md.id))
     if type(block.data) != ParagraphData:
         raise ValueError(f"object of ParagraphData class was expected but instead got {type(block.data)}")
     tool_md_id = tool_md.id
@@ -414,9 +537,11 @@ def update_paragraph_tool_data(session: Session,
                                                  tool_name= block.type,
                                                  block_id=block.id)
         session, p_tbl = add_paragraph_tool_data(session, block, tool_md.id)
+    current_span.add_event("paragraph tool data has been updated")
     return (session, p_tbl)
 
 
+@tracer.start_as_current_span("update_quote_tool_data")
 def update_quote_tool_data(session: Session,
                            block: Block, 
                           tool_md: tool_model.ToolMD
@@ -424,6 +549,13 @@ def update_quote_tool_data(session: Session,
                             Session,
                           tool_model.ToolDataModel
                           ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="update_quote_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md.id))
     if type(block.data) != QuoteData:
         raise ValueError(f"object of QuoteData class was expected but instead got {type(block.data)}")
     
@@ -456,9 +588,11 @@ def update_quote_tool_data(session: Session,
             block,
             tool_md.id
         )
+    current_span.add_event("quote tool data has been updated in quote tool tbl")
     return (session, quote_tbl)
 
 
+@tracer.start_as_current_span("update_table_tool_data")
 def update_table_tool_data(session: Session,
                            block: Block, 
                           tool_md: tool_model.ToolMD
@@ -466,6 +600,13 @@ def update_table_tool_data(session: Session,
                             Session,
                           tool_model.ToolDataModel
                           ]:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="update_table_tool_data"
+                                ))
+    current_span.set_attribute("tool_md.id", str(tool_md.id))
     if type(block.data) != TableData:
         raise ValueError(f"object of TableData class was expected but instead got {type(block.data)}")
     
@@ -496,19 +637,37 @@ def update_table_tool_data(session: Session,
             block,
             tool_md.id
         )
+    current_span.add_event("table tool data has been updated in the table tool tbl")
     return (session, tt_tbl)
 
 
+@tracer.start_as_current_span("delete_tool_md")
 def delete_tool_md(session: Session,
                    tool_md: tool_model.ToolMD):
     # tool_md = session.get(tool_model.ToolMD, tool_md_id)
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="delete_tool_md"
+    ))
+    current_span.set_attribute("tool_md.id", str(tool_md.id))
     session.delete(tool_md)
+    current_span.add_event("tool_md has been deleted from the session")
     return session
 
 
+@tracer.start_as_current_span("delete_code_tool_data")
 def delete_code_tool_data(session: Session,
                           block_id: str
                           ) -> Session:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="delete_code_tool_data"
+    ))
+    current_span.set_attribute("block.id", block_id)
     tool_md = session.exec(
         select(tool_model.ToolMD)
         .where(tool_model.ToolMD.block_id == block_id)
@@ -528,11 +687,20 @@ def delete_code_tool_data(session: Session,
     
     session.delete(ct_mdl)
     session.commit()
+    current_span.add_event("code tool data has been deleted from the db")
     return session
 
 
+@tracer.start_as_current_span("delete_header_tool_data")
 def delete_header_tool_data(session: Session,
                             block_id: str) -> Session:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="delete_header_tool_data"
+    ))
+    current_span.set_attribute("block.id", block_id)
     tool_md = session.exec(
         select(tool_model.ToolMD)
         .where(tool_model.ToolMD.block_id == block_id)
@@ -552,11 +720,20 @@ def delete_header_tool_data(session: Session,
     
     session.delete(ht_mdl)
     session.commit()
+    current_span.add_event("header tool data has been deleted from the tbl")
     return session
 
 
+@tracer.start_as_current_span("delete_list_tool_data")
 def delete_list_tool_data(session: Session,
                           block_id: str) -> Session:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="delete_list_tool_data"
+    ))
+    current_span.set_attribute("block.id", block_id)
     tool_md = session.exec(
         select(tool_model.ToolMD)
         .where(tool_model.ToolMD.block_id == block_id)
@@ -582,11 +759,20 @@ def delete_list_tool_data(session: Session,
     for item in items:
         session.delete(item) 
     session.commit()
+    current_span.add_event("list tool data has been deleted from the tbl")
     return session
 
 
+@tracer.start_as_current_span("delete_paragraph_tool_data")
 def delete_paragraph_tool_data(session: Session,
                           block_id: str) -> Session:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="delete_paragraph_tool_data"
+    ))
+    current_span.set_attribute("block.id", block_id)
     tool_md = session.exec(
         select(tool_model.ToolMD)
         .where(tool_model.ToolMD.block_id == block_id)
@@ -606,11 +792,19 @@ def delete_paragraph_tool_data(session: Session,
     
     session.delete(pt_mdl)
     session.commit()
+    current_span.add_event("paragraph tool data has been deleted from the db")
     return session
 
-
+@tracer.start_as_current_span("delete_quote_tool_data")
 def delete_quote_tool_data(session: Session,
                           block_id: str) -> Session:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="delete_quote_tool_data"
+    ))
+    current_span.set_attribute("block.id", block_id)
     tool_md = session.exec(
         select(tool_model.ToolMD)
         .where(tool_model.ToolMD.block_id == block_id)
@@ -630,11 +824,20 @@ def delete_quote_tool_data(session: Session,
     
     session.delete(qt_mdl)
     session.commit()
+    current_span.add_event("quote tool has been deleted from the db")
     return session
 
 
+@tracer.start_as_current_span("delete_table_tool_data")
 def delete_table_tool_data(session: Session,
                           block_id: str) -> Session:
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="delete_table_tool_data"
+    ))
+    current_span.set_attribute("block.id", block_id)
     tool_md = session.exec(
         select(tool_model.ToolMD)
         .where(tool_model.ToolMD.block_id == block_id)
@@ -654,14 +857,23 @@ def delete_table_tool_data(session: Session,
     
     session.delete(tt_mdl)
     session.commit()
+    current_span.add_event("table tool data has been deleted from the db")
     return session
 
 
+@tracer.start_as_current_span("get_toolmd_ifexists")
 def get_toolmd_ifexists(block_id: str) -> Optional[tool_model.ToolMD] \
         | MultipleResultsFound:
     """ 
     This function checks if the block data exists in the db or not.
     """
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="get_toolmd_ifexists"
+    ))
+    current_span.set_attribute("block.id", block_id)
     session = next(get_session())
     try:
         tool_md = session.exec(
@@ -680,11 +892,20 @@ def get_toolmd_ifexists(block_id: str) -> Optional[tool_model.ToolMD] \
     return tool_md
 
 
+@tracer.start_as_current_span("get_prev_toolmd")
 def get_prev_toolmd(block_ids: List[str], article_id: uuid.UUID, session: Session) -> List[tool_model.ToolMD]:
     '''
     This should return all the toolmd for which 
     blocks does not exist in the frontend.
     '''
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="get_prev_toolmd"
+    ))
+    current_span.set_attribute("block_ids", block_ids)
+    current_span.set_attribute("article.id", str(article_id))
     tool_md = session.exec(
         select(tool_model.ToolMD)
         .where(tool_model.ToolMD.block_id.not_in(block_ids))
@@ -693,8 +914,16 @@ def get_prev_toolmd(block_ids: List[str], article_id: uuid.UUID, session: Sessio
     return tool_md
 
 
+@tracer.start_as_current_span("delete_inexisting_toolmd")
 def delete_inexisting_toolmd(block_ids: List[str], article_id: uuid.UUID) :
-
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="delete_inexisting_toolmd"
+    ))
+    current_span.set_attribute("block_ids", block_ids)
+    current_span.set_attribute("article.id", str(article_id))
     session = next(get_session())
     tool_mds = get_prev_toolmd(block_ids, article_id, session)
     for tool_md in tool_mds:
@@ -706,19 +935,40 @@ def delete_inexisting_toolmd(block_ids: List[str], article_id: uuid.UUID) :
     session.commit()
 
 
+@tracer.start_as_current_span("update_tool_md_seq")
 def update_tool_md_seq(session: Session, tool_md_id: uuid.UUID, seq: int):
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="update_tool_md_seq"
+    ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
+    current_span.set_attribute("seq", seq)
     tool_md = session.get(tool_model.ToolMD, tool_md_id)
     tool_md.sequence = seq 
     session.add(tool_md)
+    current_span.add_event("tool_md sequence has been updated in the tool_md tbl")
     return session
 
+@tracer.start_as_current_span("update_tool_md_time_n_ver")
 def update_tool_md_time_n_ver(session: Session, 
                             tool_md_id: uuid.UUID, 
                             time: datetime, version: str):
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="update_tool_md_time_n_ver"
+    ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
+    current_span.set_attribute("time", str(time))
+    current_span.set_attribute("version", version)
     tool_md = session.get(tool_model.ToolMD, tool_md_id)
     tool_md.time = time 
     tool_md.version = version
     session.add(tool_md)
+    current_span.add_event("tool_md has been updated with new time and version")
     return session
 
 
@@ -749,6 +999,8 @@ delete_func_map = {
     "list": delete_list_tool_data
 }
 
+
+@tracer.start_as_current_span("store_editorjs_data")
 def store_editorjs_data(editorjs_data: EditorJSSessionData) :
     
     # article id will be supplied from the frontend
@@ -801,6 +1053,12 @@ def store_editorjs_data(editorjs_data: EditorJSSessionData) :
         3. delete the block ids from the table with same sequence 
         where the block id is not equal to the one in the blocks
     '''
+    current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+        package="dependencies",
+        module="editorjs_data_store",
+        func_name="store_editorjs_data"
+    ))
     time = datetime.fromtimestamp(editorjs_data.time / 1000)
     version = editorjs_data.version
     blocks = editorjs_data.blocks
