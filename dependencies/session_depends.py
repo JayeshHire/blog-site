@@ -13,6 +13,7 @@ from editorjs_basemodel import *
 from passlib.context import CryptContext
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
+from TelemetryConfig.telemetry_config import origination_
 
 tracer = trace.get_tracer(__name__)
 
@@ -28,7 +29,11 @@ we will change the author id for the user from None to current username.
 @tracer.start_as_current_span("editor session creation")
 def create_editor_session(request: Request, response: Response ) -> tool_model.EditorSession:
     current_span = trace.get_current_span()
-    current_span.set_attribute("function", "create_editor_session")
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="session_depends",
+                                   func_name="create_editor_session"
+    ))
     session = next(get_session())
     editor_session = tool_model.EditorSession(expiry_date=datetime.now()+timedelta(days=1))
     session.add(editor_session)
@@ -69,8 +74,13 @@ get the session object using the browser_id from the browser.
 def get_editor_session(request: Request, 
                        browser_id: UUID | None = None):
     current_span = trace.get_current_span()
-    current_span.set_attribute("function", "get_editor_session")
-    current_span.set_attribute("browser_id", browser_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="session_depends",
+                                   func_name="get_editor_session"
+    ))
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", str(browser_id))
     if browser_id:
         session = next(get_session())
         user_id = request.session.get("user_id")
@@ -113,7 +123,13 @@ def init_editor_session(request: Request,
                         browser_id: Annotated[UUID | None, Cookie()] = None
                         ):
     current_span = trace.get_current_span()
-    current_span.set_attribute("browser_id", browser_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="session_depends",
+                                   func_name="init_editor_session"
+    ))
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", str(browser_id))
     if browser_id:
         print(f"----- browser id: {browser_id}")
         editor_session = get_editor_session(request, browser_id)
@@ -156,13 +172,19 @@ def get_article(request: Request,
     editor session.
     '''
     current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="session_depends",
+                                   func_name="get_article"
+    ))
     print(f"Entering get_article: ")
     # print(f"editor_session_id: {request.session.get("editor_session_id")}")
     # editor_session_id = UUID(request.session.get("editor_session_id"))
     
     # editor_session_id = None if editor_session_id is None else UUID(editor_session_id)
-    print("browser_id: ", browser_id )
-    current_span.set_attribute("browser_id", browser_id)
+    print("browser_id: ", str(browser_id) )
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", browser_id)
     session = next(get_session())
     editor_session_id = session.exec(
         select(tool_model.EditorSession)
@@ -189,6 +211,11 @@ def get_article(request: Request,
 @tracer.start_as_current_span("article creation")
 def create_new_article(request: Request):
     current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="session_depends",
+                                   func_name="create_new_article"
+    ))
     editor_session_id = request.session.get("editor_session_id")
     current_span.set_attribute("editor_session_id", editor_session_id)
     author_id = request.session.get("user_id")
@@ -211,7 +238,13 @@ def store_article_data(request: Request,
                        article_data: ArticleHead,
                        browser_id: Annotated[UUID | None, Cookie()] = None):
     current_span = trace.get_current_span()
-    current_span.set_attribute("browser_id", browser_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="store_article_data"
+    ))
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", str(browser_id))
     session = next(get_session())
     # article = session.get(tool_model.Article,
                         #   UUID(request.session.get("article_id")))
@@ -248,9 +281,15 @@ def load_article_head_data(request: Request,
                            browser_id: Annotated[UUID| None, Cookie()] 
                            ) -> ArticleHeadPublic:
     current_span = trace.get_current_span()
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="load_article_head_data"
+    ))
     print("inside load_article_head_data")
     print(f"browser_id: {browser_id}")
-    current_span.set_attribute("browser_id", browser_id)
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", str(browser_id))
     article = get_article(request, browser_id)
     current_span.add_event("article has been fetched successfully")
     current_span.set_attribute("article.id", article.id)
@@ -272,7 +311,12 @@ def load_article_head_data(request: Request,
 def populate_table_data(session: Session, 
                         tool_md_id: UUID) -> TableData:
     current_span = trace.get_current_span()
-    current_span.set_attribute("tool_md.id", tool_md_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="populate_table_data"
+    ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
     table_tool = session.exec(
         select(table_tool_model.TableTool)
         .where(table_tool_model.TableTool.tool_md_id == tool_md_id)
@@ -286,7 +330,12 @@ def populate_table_data(session: Session,
 def populate_codetool_data(session: Session, 
                         tool_md_id: UUID) -> CodeToolData:
     current_span = trace.get_current_span()
-    current_span.set_attribute("tool_md.id", tool_md_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="populate_codetool_data"
+    ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
 
     code_tool = session.exec(
         select(code_tool_model.CodeTool)
@@ -301,7 +350,12 @@ def populate_codetool_data(session: Session,
 def populate_paragraph_data(session: Session, 
                         tool_md_id: UUID) -> ParagraphData:
     current_span = trace.get_current_span()
-    current_span.set_attribute("tool_md.id", tool_md_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="populate_paragraph_data"
+    ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
 
     paragraph_tool = session.exec(
         select(paragraph_tool_model.ParagraphTool)
@@ -316,7 +370,12 @@ def populate_paragraph_data(session: Session,
 def populate_header_data(session: Session, 
                         tool_md_id: UUID) -> HeaderData:
     current_span = trace.get_current_span()
-    current_span.set_attribute("tool_md.id", tool_md_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="populate_header_data"
+    ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
     header_tool = session.exec(
         select(header_tool_model.HeaderTool)
         .where(header_tool_model.HeaderTool.tool_md_id == tool_md_id)
@@ -330,7 +389,12 @@ def populate_header_data(session: Session,
 def populate_quote_data(session: Session, 
                         tool_md_id: UUID) -> QuoteData:
     current_span = trace.get_current_span()
-    current_span.set_attribute("tool_md.id", tool_md_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="populate_quote_data"
+    ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
     quote_tool = session.exec(
         select(quote_tool_model.QuoteTool)
         .where(quote_tool_model.QuoteTool.tool_md_id == tool_md_id)
@@ -346,8 +410,13 @@ def populate_list_item(session: Session,
                        parent_item_id: UUID,
                        lttbl_id: UUID):
     current_span = trace.get_current_span()
-    current_span.set_attribute("parent_id.id", parent_item_id)
-    current_span.set_attribute("list_tool_tbl.id", lttbl_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="populate_list_item"
+    ))
+    current_span.set_attribute("parent_id.id", str(parent_item_id))
+    current_span.set_attribute("list_tool_tbl.id", str(lttbl_id))
     list_items_db = session.exec(
         select(list_tool_models.Item)
         # .where(list_tool_models.Item.lttbl_id == lttbl_id)
@@ -376,7 +445,12 @@ def populate_list_item(session: Session,
 def populate_list_data(session: Session, 
                         tool_md_id: UUID) -> ListData:
     current_span = trace.get_current_span()
-    current_span.set_attribute("tool_md.id", tool_md_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="populate_list_data"
+    ))
+    current_span.set_attribute("tool_md.id", str(tool_md_id))
     list_tool = session.exec(
         select(list_tool_models.ListToolTbl)
         .where(list_tool_models.ListToolTbl.tool_md_id == tool_md_id)
@@ -421,7 +495,12 @@ EditorJSSessionData object.
 @tracer.start_as_current_span("populate_editorjs_session")
 def populate_editorjs_session(article_id: UUID) -> EditorJSSessionData:
     current_span = trace.get_current_span()
-    current_span.set_attribute("article.id", article_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="populate_editorjs_session"
+    ))
+    current_span.set_attribute("article.id", str(article_id))
     session = next(get_session())
     tool_mds = session.exec(
         select(tool_model.ToolMD)
@@ -466,7 +545,13 @@ def load_article_body_data(request: Request,
                            browser_id: Annotated[UUID | None, Cookie()]
                            ) -> EditorJSSessionDataPub:
     current_span = trace.get_current_span()
-    current_span.set_attribute("browser_id", browser_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="load_article_body_data"
+    ))
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", str(browser_id))
     article = get_article(request, browser_id)
     editorjs_session_data = populate_editorjs_session(article.id)
     return EditorJSSessionDataPub.model_validate(editorjs_session_data)
@@ -480,7 +565,13 @@ def editor_session_orchestrator(request: Request,
                                 response: Response,
                                 browser_id: Annotated[UUID | None, Cookie()] = None) -> tool_model.EditorSession:
     current_span = trace.get_current_span()
-    current_span.set_attribute("browser_id", browser_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="editor_session_orchestrator"
+    ))
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", str(browser_id))
     editor_session = get_editor_session(request, response, browser_id=browser_id) 
     if editor_session is None:
         editor_session = create_editor_session(request, response)
@@ -495,7 +586,13 @@ def get_curr_article_or_make_new(request: Request,
         This should get the last article which was present on the editor.
     '''
     current_span = trace.get_current_span()
-    current_span.set_attribute("browser_id", browser_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="get_curr_article_or_make_new"
+    ))
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", browser_id)
     user_id = UUID(request.session.get("user_id"))
     session = next(get_session())
     if user_id:
@@ -581,8 +678,13 @@ def user_login(request: Request,
     This function will login an already existing user.
     '''
     current_span = trace.get_current_span()
-    current_span.set_attribute("browser_id", browser_id)
-    current_span.set_attribute("function", "user_login")
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="user_login"
+    ))
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", browser_id)
     if browser_id is None:
         editor_session = create_editor_session(request, response)
     else:
@@ -660,7 +762,13 @@ def user_signup(request: Request,
     This function will register a new user and logs in the user.
     '''
     current_span = trace.get_current_span()
-    current_span.set_attribute("browser_id", browser_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="user_signup"
+    ))
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", browser_id)
     # create a user.
     session = next(get_session())
     hashed_password = hash_password(user_create.password)
@@ -719,7 +827,13 @@ def user_logout(request: Request,
                 browser_id: Annotated[UUID | None, Cookie()] = None) -> bool:
     session = next(get_session())
     current_span = trace.get_current_span()
-    current_span.set_attribute("browser_id", browser_id)
+    current_span.set_attributes(origination_(
+                                   package="dependencies",
+                                   module="editorjs_data_store",
+                                   func_name="user_logout"
+    ))
+    if browser_id is not None:
+        current_span.set_attribute("browser_id", browser_id)
     user_id = UUID(request.session.get("user_id"))
     current_span.set_attribute("user_id")
     editor_session = get_editor_session(request, browser_id) if browser_id is not None else None 
