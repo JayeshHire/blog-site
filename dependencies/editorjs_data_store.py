@@ -24,7 +24,6 @@ def add_tool_md(session: Session,
                 ) -> Tuple[
                     Session, tool_model.ToolMD
                 ]:
-    current_span = trace.get_current_span()
     with tracer.start_as_current_span("add_tool_md", 
                                       attributes={
                                           **origination_(
