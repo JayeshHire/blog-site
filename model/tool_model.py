@@ -20,16 +20,45 @@ class Tool(SQLModel, table=True):
 
 #     articles: list["Article"] | None = Relationship(back_populates="author")
 
-
-class Article(SQLModel, table=True):
-    id: uuid.UUID = Field(default_factory= uuid.uuid4, primary_key=True)
+class BaseArticle(SQLModel):
     title: str | None = Field(default=None)
     subtitle: str | None = Field(default=None)
-    editor_session_id: uuid.UUID = Field(foreign_key="editor_session.id")
+    author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
+
+class DraftArticle(BaseArticle):
+    # title: str | None = Field(default=None)
+    # subtitle: str | None = Field(default=None)
+    last_updated_at: datetime = Field(default_factory=datetime.now)
+    # author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
+
+class CommunityArticle(BaseArticle):
+    '''
+    These are articles published by other users
+    '''
+    # title: str | None = Field(default=None)
+    # subtitle: str | None = Field(default=None)
     pub_datetime: datetime = Field(default_factory= datetime.now)
+    # author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
+
+class PublishedArticle(BaseArticle):
+    ''' 
+    These are articles published by the current user
+    '''
+    # title: str | None = Field(default=None)
+    # subtitle: str | None = Field(default=None)
+    pub_datetime: datetime = Field(default_factory= datetime.now)
+    # author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
+
+class Article(BaseArticle, table=True):
+    id: uuid.UUID = Field(default_factory= uuid.uuid4, primary_key=True)
+    # title: str | None = Field(default=None)
+    # subtitle: str | None = Field(default=None)
+    editor_session_id: uuid.UUID = Field(foreign_key="editor_session.id")
+    is_public: bool = Field(default=False)
+    pub_datetime: datetime | None = Field(default=None)
     last_updated_at: datetime = Field(default_factory=datetime.now)
     # path_url: str | None = Field(default=None)
-    author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
+    # author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
     author: user_model.User | None = Relationship(back_populates="articles")
  
     '''
