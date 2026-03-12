@@ -1,6 +1,7 @@
 from sqlmodel import SQLModel, Field, Relationship
 import uuid
 from datetime import datetime
+from . import user_model
 
 
 class Tool(SQLModel, table=True):
@@ -11,23 +12,29 @@ class Tool(SQLModel, table=True):
     tool_mds: list["ToolMD"] | None = Relationship(back_populates="tool")
 
 
-class User(SQLModel, table=True):
-    id: uuid.UUID = Field(default_factory= uuid.uuid4, primary_key=True)
-    username: str = Field(unique=True)
-    email: str = Field(unique= True)
-    last_login: datetime | None = Field(default_factory=datetime.now)
+# class User(SQLModel, table=True):
+#     id: uuid.UUID = Field(default_factory= uuid.uuid4, primary_key=True)
+#     username: str = Field(unique=True)
+#     email: str = Field(unique= True)
+#     last_login: datetime | None = Field(default_factory=datetime.now)
 
-    articles: list["Article"] | None = Relationship(back_populates="author")
+#     articles: list["Article"] | None = Relationship(back_populates="author")
 
 
 class Article(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory= uuid.uuid4, primary_key=True)
-    title: str
-    subtitle: str
+    title: str | None = Field(default=None)
+    subtitle: str | None = Field(default=None)
+    editor_session_id: uuid.UUID = Field(foreign_key="editor_session.id")
     pub_datetime: datetime = Field(default_factory= datetime.now)
+    last_updated_at: datetime = Field(default_factory=datetime.now)
     # path_url: str | None = Field(default=None)
     author_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
-    author: User | None = Relationship(back_populates="articles")
+    author: user_model.User | None = Relationship(back_populates="articles")
+ 
+    '''
+    article is either created during a session where 
+    '''
 
     tool_mds: list["ToolMD"] | None = Relationship(back_populates="article")
 
@@ -36,6 +43,11 @@ class ToolMD(SQLModel, table=True): # Tool Meta Data
     id: uuid.UUID | None = Field(default_factory= uuid.uuid4, primary_key=True)
     sequence: int 
     block_id: str 
+    
+    # this two fields data should be
+    # added by the db population functions.
+    time: datetime
+    version: str 
 
     article_id: uuid.UUID | None = Field(default=None, foreign_key="article.id")
     article: Article | None = Relationship(back_populates="tool_mds")
@@ -50,3 +62,14 @@ class ToolMD(SQLModel, table=True): # Tool Meta Data
 # All the tool data model classes inherit this class
 class ToolDataModel(SQLModel):
     pass
+
+class EditorSession(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    logged_in: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.now)
+    user_id: uuid.UUID | None = Field(default=None, foreign_key="user.id")
+    expiry_date: datetime | None = Field(default=None)
+    browser_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    isopen: bool = Field(default=True)
+
+    __tablename__ = "editor_session"

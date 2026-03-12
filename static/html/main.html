@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <!-- <link rel="stylesheet" href="style.css"> -->
+     <link rel="stylesheet" href="/static/html/style.css">
+</head>
+<body>
+    <button id="save-btn">
+        Save
+    </button>
+    <button id="save-article-head">
+        Save Head 
+    </button>
+    <button id="test-btn">
+        Test
+    </button>
+    
+    <div class="accessible-settings">
+        <div class="option-box" >
+            <div class="option-icon">
+                <img src="/static/assets/option-icon.png" alt="">
+            </div>
+            <div class="options">
+                <div class="option" id="op-drafts" >
+                    Drafts
+                </div>
+                <div class="option" id="op-pub-articles">
+                    Published articles
+                </div>
+                <div class="option" id="op-comm-articles">
+                    Community articles
+                </div>
+            </div>
+        </div>
+        <div class="profile-info">
+            <div class="profile-icon">
+                <img src="/static/assets/profile-icon.png" alt="">
+            </div>
+            <div class="profile-option-list">
+                <div class="p-option" id="op-login" >
+                    login
+                </div>
+                <div class="p-option" id="op-signup">
+                    signup
+                </div>
+                <div class="p-option" id="op-logout">
+                    logout
+                </div>
+                <div class="p-option" id="op-profile-setting">
+                    profile settings
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="options-content-window">
+        <div class="lay-box h-100w-100">
+
+        </div>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="lay-box box1"></div>
+        <div class="lay-box box1">
+            <div class="editor-layout">
+                <div class="editor-container">
+                    <div id="article_info_editor">
+
+                    </div>
+                    <div id="editor">
+
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./dist/basic/bundle.js"> </script>
+
+    <!-- src="./dist/{pkg}/bundle.js" -->
+    <script type="module" src="./dist/editor/bundle.js"></script>
+
+</body>
+</html>
