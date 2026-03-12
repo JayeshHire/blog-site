@@ -1008,7 +1008,7 @@ def user_logout(request: Request,
                                       }) as current_span:
         session = next(get_session())
         user_id = UUID(request.session.get("user_id"))
-        current_span.set_attribute("user_id")
+        current_span.set_attribute("user_id", user_id)
         editor_session = get_editor_session(request, browser_id) if browser_id is not None else None 
         if editor_session:
             editor_session.logged_in = False
